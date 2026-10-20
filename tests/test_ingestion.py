@@ -117,3 +117,103 @@ def test_chunks_from_another_embedding_model_are_re_embedded(db, knowledge, embe
     summary = ingest_knowledge(knowledge, db, embed=embedder)
 
     assert sorted(summary.updated) == ["contact.md", "returns.md"]
+
+
+# --- Folder documents vs uploads (Milestone 4) ---
+
+from app.models.document import SOURCE_FOLDER, SOURCE_UPLOAD  # noqa: E402
+from app.services.ingestion import content_hash  # noqa: E402
+
+
+def add_upload(db, source="contact.md", text="# Uploaded\n\n## Part\n\nUploaded text.", model=None):
+    document = Document(
+        source=source, title="Uploaded", source_type=SOURCE_UPLOAD,
+        content_hash=content_hash(text), content=text, original_filename=source,
+    )
+    db.add(document)
+    db.flush()
+    db.add(Chunk(
+        document_id=document.id, chunk_index=0, content="Uploaded > Part\n\nUploaded text.",
+        embedding=vector(d0=1.0), embedding_model=model or settings.embedding_model,
+    ))
+    db.commit()
+    return document
+
+
+def test_text_hash_equals_the_old_file_bytes_hash(knowledge):
+    import hashlib
+
+    raw = (knowledge / "returns.md").read_bytes()
+
+    assert content_hash(raw.decode("utf-8")) == hashlib.sha256(raw).hexdigest()
+
+
+def test_folder_documents_store_their_text(db, knowledge, embedder):
+    ingest_knowledge(knowledge, db, embed=embedder)
+
+    document = db.scalar(select(Document).where(Document.source == "returns.md"))
+    assert document.source_type == SOURCE_FOLDER
+    assert document.content == (knowledge / "returns.md").read_text()
+
+
+def test_missing_text_is_stored_without_re_embedding(db, knowledge, embedder):
+    ingest_knowledge(knowledge, db, embed=embedder)
+    db.query(Document).update({Document.content: None})
+    db.commit()
+    embedder.calls.clear()
+
+    summary = ingest_knowledge(knowledge, db, embed=embedder)
+
+    assert sorted(summary.content_stored) == ["contact.md", "returns.md"]
+    assert embedder.calls == []
+    db.expire_all()
+    assert all(d.content for d in db.scalars(select(Document)))
+
+
+def test_startup_ingestion_never_touches_uploads(db, knowledge, embedder):
+    ingest_knowledge(knowledge, db, embed=embedder)
+    upload = add_upload(db, source="refund-faq.pdf")
+    embedder.calls.clear()
+    (knowledge / "contact.md").unlink()  # a folder file removed
+
+    summary = ingest_knowledge(knowledge, db, embed=embedder)
+
+    assert summary.removed == ["contact.md"]  # the folder document only
+    assert summary.reembedded_uploads == []
+    assert embedder.calls == []
+    db.expire_all()
+    assert db.get(Document, upload.id) is not None
+    assert db.query(Chunk).filter_by(document_id=upload.id).count() == 1
+
+
+def test_an_upload_can_share_a_folder_file_name(db, knowledge, embedder):
+    add_upload(db, source="contact.md")
+
+    summary = ingest_knowledge(knowledge, db, embed=embedder)
+
+    assert sorted(summary.added) == ["contact.md", "returns.md"]
+    db.expire_all()
+    assert sorted(db.scalars(select(Document.source_type).where(Document.source == "contact.md"))) == [
+        SOURCE_FOLDER, SOURCE_UPLOAD,
+    ]
+
+
+def test_reembed_all_re_embeds_uploads_from_their_stored_text(db, knowledge, embedder):
+    ingest_knowledge(knowledge, db, embed=embedder)
+    add_upload(db, source="refund-faq.pdf")
+    embedder.calls.clear()
+
+    summary = ingest_knowledge(knowledge, db, embed=embedder, reembed_all=True)
+
+    assert summary.reembedded_uploads == ["refund-faq.pdf"]
+    assert "Uploaded > Part\n\nUploaded text." in embedder.calls[0][0]
+    assert len(embedder.calls) == 1  # folder files and the upload in one request
+
+
+def test_uploads_with_chunks_from_another_model_are_re_embedded(db, knowledge, embedder):
+    ingest_knowledge(knowledge, db, embed=embedder)
+    add_upload(db, source="refund-faq.pdf", model="some-old-model")
+
+    summary = ingest_knowledge(knowledge, db, embed=embedder)
+
+    assert summary.reembedded_uploads == ["refund-faq.pdf"]

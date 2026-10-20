@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import Chunk, Document
+from app.models.document import SOURCE_FOLDER
 from app.services.ai import AIServiceError, embed_texts
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,12 @@ def always_included_chunks(db: Session, exclude: list[RetrievedChunk]) -> list[R
     rows = db.execute(
         select(Document.source, Chunk.content)
         .join(Document)
-        .where(Document.source.in_(sources), Chunk.embedding_model == settings.embedding_model)
+        .where(
+            Document.source.in_(sources),
+            # Folder documents only: an upload named contact.md is never always included
+            Document.source_type == SOURCE_FOLDER,
+            Chunk.embedding_model == settings.embedding_model,
+        )
         .order_by(Document.source, Chunk.chunk_index)
     ).all()
     chunks = [RetrievedChunk(s, c, None) for s, c in rows if (s, c) not in already]

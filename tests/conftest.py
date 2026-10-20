@@ -163,8 +163,11 @@ def vector(**weights) -> list[float]:
 def add_document(db):
     """add_document(source, [(content, vector), ...]) -> saves a knowledge document and its chunks."""
 
-    def _add_document(source, chunks, model=None):
-        document = Document(source=source, title=source.removesuffix(".md"), content_hash="x" * 64)
+    def _add_document(source, chunks, model=None, source_type="folder"):
+        document = Document(
+            source=source, title=source.removesuffix(".md"), content_hash=source_type[0] * 64,
+            source_type=source_type, content="stored text" if source_type == "upload" else None,
+        )
         db.add(document)
         db.flush()
         for index, (content, embedding) in enumerate(chunks):

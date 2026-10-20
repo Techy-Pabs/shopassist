@@ -100,3 +100,12 @@ def test_always_include_can_be_turned_off(db, store, monkeypatch):
     monkeypatch.setattr(settings, "rag_always_include", "")
 
     assert find_store_information(db, "question", embed=failing_embed) == []
+
+
+def test_always_include_ignores_an_upload_with_the_same_name(db, add_document):
+    add_document("contact.md", [("Contact > Email", vector(d2=1.0))])
+    add_document("contact.md", [("Uploaded contact > Fake", vector(d2=1.0))], source_type="upload")
+
+    chunks = find_store_information(db, "question", embed=failing_embed)
+
+    assert labels(chunks) == ["Contact > Email"]

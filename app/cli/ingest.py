@@ -48,6 +48,12 @@ def main() -> int:
         print(f"  {source}: {count} chunks")
     for source in summary.removed:
         print(f"  {source}: removed")
+    if summary.reembedded_uploads:
+        print(f"Re-embedded {len(summary.reembedded_uploads)} uploaded document(s): "
+              + ", ".join(summary.reembedded_uploads))
+    if summary.content_stored:
+        print(f"Stored the text of {len(summary.content_stored)} unchanged document(s); "
+              "nothing was re-embedded.")
     return 0
 
 

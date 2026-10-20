@@ -26,7 +26,7 @@ To try it, register with **POST /auth/register**, log in with **POST /auth/login
 - Clear error responses when the AI is slow, rate limited or unavailable
 - Database migrations with Alembic
 - Interactive API documentation (Swagger UI) at `/docs`
-- An automated test suite (105 tests) that uses its own database, a fake AI and fake embeddings, so it never touches real data or makes real AI calls
+- An automated test suite (116 tests) that uses its own database, a fake AI and fake embeddings, so it never touches real data or makes real AI calls
 - A quality check for the knowledge base: retrieval and answer checks against a list of test questions
 
 ## Roadmap
@@ -36,10 +36,9 @@ Only the checked items are done. The others are planned and are **not** built ye
 - [x] **Deployment:** live on Render with a Neon PostgreSQL database (see [Deployment](#deployment))
 - [x] **Milestone 2, knowledge base:** answer questions from the store's own policies and information (see [Knowledge base](#knowledge-base))
 - [x] **Milestone 3, admin role:** customer and admin roles, and read only admin endpoints (see [Admins](#admins))
-- [ ] **Milestone 4, knowledge uploads:** admins add or update store documents through the API instead of editing files
+- [ ] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base through the API, instead of editing files
+- [ ] **Milestone 5, chat interface:** a web frontend for customers (today the API is used through Swagger UI or any HTTP client)
 - [ ] **Milestone 6, admin dashboard:** a web interface for store staff to review conversations and the knowledge base
-- [ ] **Customer file uploads:** let customers attach files such as photos of a damaged item (not yet scheduled)
-- [ ] **Chat interface:** a web frontend for customers (not yet scheduled; today the API is used through Swagger UI or any HTTP client)
 
 ## Tech stack
 
@@ -257,7 +256,7 @@ The tests:
 
 - cover the admin role: `401` and `403` on every admin endpoint, admins getting `200`, registration ignoring a role, promoting and demoting taking effect without a new token, pagination limits, no password hashes in admin responses, and the promote and demote command
 
-There are 105 tests.
+There are 116 tests.
 
 Test tools (`requirements-dev.txt`) are only installed in the test image, not in the image the API runs from.
 
@@ -310,7 +309,7 @@ Latest results:
 - **Retrieval:** for all 14 questions the store information covers, the expected document ranked first.
 - **Threshold:** relevant documents scored 0.415 or more, and the best match for an uncovered question scored 0.194. `RAG_MIN_SIMILARITY` is set to 0.30, roughly midway, to leave room for wording the check doesn't cover.
 - **Answers:** 5 of 5 passed (delivery to Abuja, a follow up about cost, the pay on delivery limit, laptops, and the injection attempt, which was refused).
-- **Tests:** 58 automated tests passed at the end of Milestone 2 (105 now, with the admin tests).
+- **Tests:** 58 automated tests passed at the end of Milestone 2 (116 now, with the admin and document source tests).
 
 The answer check matches text, so it's a guide; reading the replies is still worthwhile.
 

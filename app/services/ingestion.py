@@ -1,4 +1,10 @@
-"""Load knowledge/*.md into the documents and chunks tables."""
+"""Load knowledge/*.md into the documents and chunks tables.
+
+Only "folder" documents (files in knowledge/) are added, updated or removed
+here. Uploaded documents are managed through the admin API and are never
+touched, except to re-embed them from their stored text when asked to (or
+when their chunks were made by another embedding model).
+"""
 
 import hashlib
 import logging
@@ -11,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import Chunk, Document
+from app.models.document import SOURCE_FOLDER, SOURCE_UPLOAD
 from app.services.ai import EmbeddingMode, embed_texts
 from app.services.chunking import chunk_markdown, title_from
 
@@ -27,6 +34,19 @@ class IngestionSummary:
     removed: list[str] = field(default_factory=list)
     chunks_per_file: dict[str, int] = field(default_factory=dict)
     texts_embedded: int = 0
+    # Uploaded documents re-embedded from their stored text
+    reembedded_uploads: list[str] = field(default_factory=list)
+    # Unchanged folder documents whose text was stored for the first time (no re-embedding)
+    content_stored: list[str] = field(default_factory=list)
+
+
+def content_hash(text: str) -> str:
+    """SHA-256 of the text as UTF-8. Used for both folder files and uploads.
+
+    For a UTF-8 file this equals the hash of the file's bytes, which is what
+    earlier versions stored, so existing documents keep their hashes.
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -34,12 +54,13 @@ class _PendingDocument:
     source: str
     title: str
     content_hash: str
+    content: str
     chunk_texts: list[str]
     existing: Document | None
 
 
-def _needs_embedding(document: Document, content_hash: str, reembed_all: bool, db: Session) -> bool:
-    if reembed_all or document.content_hash != content_hash:
+def _needs_embedding(document: Document, new_hash: str, reembed_all: bool, db: Session) -> bool:
+    if reembed_all or document.content_hash != new_hash:
         return True
     # Chunks from a different embedding model can't be compared with new queries
     other_model = db.scalar(
@@ -64,21 +85,36 @@ def ingest_knowledge(
     """
     summary = IngestionSummary()
     files = sorted(knowledge_dir.glob("*.md"))
-    existing = {d.source: d for d in db.scalars(select(Document))}
+    existing = {
+        d.source: d for d in db.scalars(select(Document).where(Document.source_type == SOURCE_FOLDER))
+    }
 
     pending: list[_PendingDocument] = []
     for path in files:
-        raw = path.read_bytes()
-        content_hash = hashlib.sha256(raw).hexdigest()
+        markdown = path.read_bytes().decode("utf-8")
+        new_hash = content_hash(markdown)
         document = existing.get(path.name)
-        if document and not _needs_embedding(document, content_hash, reembed_all, db):
+        if document and not _needs_embedding(document, new_hash, reembed_all, db):
             summary.unchanged.append(path.name)
             summary.chunks_per_file[path.name] = len(document.chunks)
+            if document.content is None:
+                # Saved before the text was stored: store it now, no re-embedding needed
+                document.content = markdown
+                db.commit()
+                summary.content_stored.append(path.name)
             continue
-        markdown = raw.decode("utf-8")
         title = title_from(markdown, fallback=path.stem.replace("-", " ").capitalize())
         chunk_texts = [c.content for c in chunk_markdown(markdown, title)]
-        pending.append(_PendingDocument(path.name, title, content_hash, chunk_texts, document))
+        pending.append(_PendingDocument(path.name, title, new_hash, markdown, chunk_texts, document))
+
+    # Uploads are never added or removed here, only re-embedded from their stored text
+    uploads = db.scalars(select(Document).where(Document.source_type == SOURCE_UPLOAD)).all()
+    for upload in uploads:
+        if _needs_embedding(upload, upload.content_hash, reembed_all, db):
+            chunk_texts = [c.content for c in chunk_markdown(upload.content, upload.title)]
+            pending.append(
+                _PendingDocument(upload.source, upload.title, upload.content_hash, upload.content, chunk_texts, upload)
+            )
 
     # One embedding call for every new or changed chunk (batched inside embed_texts)
     all_texts = [text for doc in pending for text in doc.chunk_texts]
@@ -89,9 +125,10 @@ def ingest_knowledge(
     for doc in pending:
         doc_vectors = vectors[position : position + len(doc.chunk_texts)]
         position += len(doc.chunk_texts)
-        document = doc.existing or Document(source=doc.source)
+        document = doc.existing or Document(source=doc.source, source_type=SOURCE_FOLDER)
         document.title = doc.title
         document.content_hash = doc.content_hash
+        document.content = doc.content
         if doc.existing:
             db.execute(delete(Chunk).where(Chunk.document_id == doc.existing.id))
         else:
@@ -109,6 +146,9 @@ def ingest_knowledge(
         )
         db.commit()  # one transaction per document
         db.expire(document)
+        if document.source_type == SOURCE_UPLOAD:
+            summary.reembedded_uploads.append(doc.source)
+            continue
         (summary.updated if doc.existing else summary.added).append(doc.source)
         summary.chunks_per_file[doc.source] = len(doc.chunk_texts)
 
