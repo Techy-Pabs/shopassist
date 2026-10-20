@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     # ".md", comma separated. "contact" means customers always get support details.
     rag_always_include: str = "contact"
 
+    # Knowledge uploads (admin only). Each limit gets a 413 when exceeded.
+    upload_max_file_bytes: int = 5 * 1024 * 1024  # 5 MB
+    upload_max_pdf_pages: int = 200
+    # A DOCX is a zip file: its unpacked size is checked before parsing
+    upload_max_docx_uncompressed_bytes: int = 20 * 1024 * 1024  # 20 MB
+    upload_max_chars: int = 60_000
+    # 64 = one embedding batch, so every upload costs exactly one request
+    upload_max_chunks: int = 64
+
     @property
     def rag_always_include_list(self) -> list[str]:
         return [name.strip() for name in self.rag_always_include.split(",") if name.strip()]

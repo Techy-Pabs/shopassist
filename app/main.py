@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 
+from app.core.config import settings
 from app.db.checks import check_embedding_dimensions
 from app.db.session import engine
 from app.routers import admin, auth, conversations
@@ -25,6 +26,27 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ShopAssist", lifespan=lifespan)
+
+
+# Room for the multipart wrapping and the title field around the file itself
+UPLOAD_OVERHEAD_BYTES = 64 * 1024
+
+
+@app.middleware("http")
+async def reject_oversized_uploads(request: Request, call_next):
+    # Turn away an upload that declares its size as too large before reading
+    # its body. Uploads that don't declare a size are still stopped while
+    # reading (see read_limited).
+    if request.method == "POST" and request.url.path == "/admin/knowledge/documents":
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > settings.upload_max_file_bytes + UPLOAD_OVERHEAD_BYTES:
+            limit_mb = settings.upload_max_file_bytes // (1024 * 1024)
+            return JSONResponse(
+                status_code=413,
+                content={"detail": f"This file is over the {limit_mb} MB upload limit. Split the "
+                                   "document into smaller files and upload them separately."},
+            )
+    return await call_next(request)
 
 
 @app.exception_handler(RequestValidationError)

@@ -38,12 +38,23 @@ class AdminDocument(BaseModel):
     id: int
     title: str
     source: str
+    # "folder" (a file in knowledge/) or "upload" (uploaded by an admin)
+    source_type: str
+    # Uploads only: the cleaned original file name and the admin who uploaded it
+    original_filename: str | None
+    uploaded_by: int | None
     chunk_count: int
     # Every model used by this document's chunks (more than one part way through a re-embed)
     embedding_models: list[str]
     # True when any chunk was made by a model other than EMBEDDING_MODEL
     stale: bool
     updated_at: datetime
+
+
+class UploadedDocument(AdminDocument):
+    size_bytes: int
+    # Embedding requests this upload used (counts against the daily free quota)
+    embedding_requests: int
 
 
 class AdminStats(BaseModel):

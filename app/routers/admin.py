@@ -1,14 +1,19 @@
 """Read only endpoints for admins (the store owner and staff)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.dependencies import get_db, require_admin
+from app.models.user import User as UserModel
 from app.models import Chunk, Conversation, Document, Message, User
-from app.schemas.admin import AdminConversation, AdminDocument, AdminStats, AdminUser, Page
+from app.schemas.admin import AdminConversation, AdminDocument, AdminStats, AdminUser, Page, UploadedDocument
 from app.schemas.message import MessageResponse
+from app.services.ai import AIServiceError
+from app.services.extraction import UploadError
+from app.services.uploads import process_upload, read_limited
 
 # Every route here requires an admin. require_admin also logs each request.
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -94,7 +99,8 @@ def list_knowledge_documents(page: Pagination = Depends(), db: Session = Depends
     rows = db.execute(query.limit(page.limit).offset(page.offset)).all()
     items = [
         AdminDocument(
-            id=d.id, title=d.title, source=d.source, chunk_count=chunk_count,
+            id=d.id, title=d.title, source=d.source, source_type=d.source_type,
+            original_filename=d.original_filename, uploaded_by=d.uploaded_by, chunk_count=chunk_count,
             embedding_models=sorted(used_models),
             stale=any(m != settings.embedding_model for m in used_models),
             updated_at=d.updated_at,
@@ -102,6 +108,46 @@ def list_knowledge_documents(page: Pagination = Depends(), db: Session = Depends
         for d, chunk_count, used_models in rows
     ]
     return Page(items=items, total=count(db, query), limit=page.limit, offset=page.offset)
+
+
+@router.post(
+    "/knowledge/documents",
+    response_model=UploadedDocument,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Duplicate content, or a file name already in use"},
+               413: {"description": "Over an upload limit"},
+               415: {"description": "Not a real PDF, DOCX, TXT or MD file"},
+               422: {"description": "No text could be extracted"},
+               502: {"description": "Embedding failed; nothing was saved"}},
+)
+def upload_knowledge_document(
+    file: UploadFile = File(..., description="A .pdf, .docx, .txt or .md file"),
+    title: str | None = Form(None, max_length=200, description="Defaults to the file name"),
+    admin: UserModel = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Add a document to the knowledge base. Costs one embedding request."""
+    try:
+        data = read_limited(file.file, settings.upload_max_file_bytes)
+        result = process_upload(db, admin, file.filename, data, title)
+    except UploadError as error:
+        body = {"detail": error.message}
+        if hasattr(error, "document_id"):
+            body["document_id"] = error.document_id
+        return JSONResponse(status_code=error.status_code, content=body)
+    except AIServiceError:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "The embedding service is unavailable right now, so the document was not added. "
+            "Nothing was saved; please try again later.",
+        )
+    d = result.document
+    return UploadedDocument(
+        id=d.id, title=d.title, source=d.source, source_type=d.source_type,
+        original_filename=d.original_filename, uploaded_by=d.uploaded_by,
+        chunk_count=result.chunk_count, embedding_models=[settings.embedding_model], stale=False,
+        updated_at=d.updated_at, size_bytes=d.size_bytes, embedding_requests=result.embedding_requests,
+    )
 
 
 @router.get("/stats", response_model=AdminStats)
