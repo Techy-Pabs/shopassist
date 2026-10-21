@@ -1,6 +1,8 @@
 """Read only endpoints for admins (the store owner and staff)."""
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+import logging
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -9,11 +11,21 @@ from app.core.config import settings
 from app.dependencies import get_db, require_admin
 from app.models.user import User as UserModel
 from app.models import Chunk, Conversation, Document, Message, User
-from app.schemas.admin import AdminConversation, AdminDocument, AdminStats, AdminUser, Page, UploadedDocument
+from app.models.document import SOURCE_UPLOAD
+from app.schemas.admin import (
+    AdminConversation, AdminDocument, AdminDocumentDetail, AdminStats, AdminUser, ChunkPreview, Page,
+    UploadedDocument,
+)
 from app.schemas.message import MessageResponse
 from app.services.ai import AIServiceError
 from app.services.extraction import UploadError
 from app.services.uploads import process_upload, read_limited
+
+logger = logging.getLogger(__name__)
+
+# Chunks shown in a document's preview, and how much of each
+PREVIEW_CHUNKS = 3
+PREVIEW_CHARS = 300
 
 # Every route here requires an admin. require_admin also logs each request.
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -148,6 +160,59 @@ def upload_knowledge_document(
         chunk_count=result.chunk_count, embedding_models=[settings.embedding_model], stale=False,
         updated_at=d.updated_at, size_bytes=d.size_bytes, embedding_requests=result.embedding_requests,
     )
+
+
+@router.get("/knowledge/documents/{document_id}", response_model=AdminDocumentDetail)
+def get_knowledge_document(document_id: int, db: Session = Depends(get_db)):
+    """One document, with a short preview of its first chunks."""
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+    chunks = db.scalars(
+        select(Chunk).where(Chunk.document_id == document_id).order_by(Chunk.chunk_index)
+    ).all()
+    used_models = sorted({c.embedding_model for c in chunks})
+    preview = [
+        ChunkPreview(
+            chunk_index=c.chunk_index,
+            content=c.content if len(c.content) <= PREVIEW_CHARS else c.content[:PREVIEW_CHARS].rstrip() + "...",
+        )
+        for c in chunks[:PREVIEW_CHUNKS]
+    ]
+    return AdminDocumentDetail(
+        id=document.id, title=document.title, source=document.source, source_type=document.source_type,
+        original_filename=document.original_filename, uploaded_by=document.uploaded_by,
+        chunk_count=len(chunks), embedding_models=used_models,
+        stale=any(m != settings.embedding_model for m in used_models),
+        updated_at=document.updated_at, size_bytes=document.size_bytes, created_at=document.created_at,
+        preview=preview,
+    )
+
+
+@router.delete(
+    "/knowledge/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={409: {"description": "Folder documents are managed by the knowledge folder"}},
+)
+def delete_knowledge_document(
+    document_id: int, admin: UserModel = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Delete an uploaded document and its chunks."""
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+    if document.source_type != SOURCE_UPLOAD:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This document comes from the knowledge folder. Remove or change the file in "
+            "knowledge/ instead; it can't be deleted here.",
+        )
+    name = document.source
+    db.delete(document)  # its chunks are deleted with it
+    db.commit()
+    # Ids and the file name only, never the content
+    logger.info("Knowledge delete: admin_id=%s document_id=%s file=%s", admin.id, document_id, name)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/stats", response_model=AdminStats)

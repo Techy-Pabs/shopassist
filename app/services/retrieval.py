@@ -22,6 +22,11 @@ class RetrievedChunk:
     content: str
     # Cosine similarity to the search text; None for always included chunks
     similarity: float | None
+    # The document's title and where it came from ("folder" or "upload"),
+    # shown to the AI around the chunk
+    title: str = ""
+    source_type: str = SOURCE_FOLDER
+    chunk_id: int | None = None
 
     @property
     def label(self) -> str:
@@ -42,7 +47,10 @@ def search_by_vector(db: Session, vector: Sequence[float], limit: int | None) ->
     """Chunks ordered from most to least similar to vector (no threshold)."""
     distance = Chunk.embedding.cosine_distance(vector)
     query = (
-        select(Document.source, Chunk.content, (1 - distance).label("similarity"))
+        select(
+            Document.source, Chunk.content, (1 - distance).label("similarity"),
+            Document.title, Document.source_type, Chunk.id,
+        )
         .join(Document)
         # Chunks embedded by another model can't be compared with this query
         .where(Chunk.embedding_model == settings.embedding_model)
@@ -50,7 +58,10 @@ def search_by_vector(db: Session, vector: Sequence[float], limit: int | None) ->
     )
     if limit is not None:
         query = query.limit(limit)
-    return [RetrievedChunk(source, content, float(sim)) for source, content, sim in db.execute(query)]
+    return [
+        RetrievedChunk(source, content, float(sim), title, source_type, chunk_id)
+        for source, content, sim, title, source_type, chunk_id in db.execute(query)
+    ]
 
 
 def relevant_chunks(db: Session, vector: Sequence[float]) -> list[RetrievedChunk]:
@@ -87,9 +98,9 @@ def always_included_chunks(db: Session, exclude: list[RetrievedChunk]) -> list[R
     sources = [f"{name}.md" for name in settings.rag_always_include_list]
     if not sources:
         return []
-    already = {(c.source, c.content) for c in exclude}
+    already = {c.chunk_id for c in exclude}
     rows = db.execute(
-        select(Document.source, Chunk.content)
+        select(Document.source, Chunk.content, Document.title, Chunk.id)
         .join(Document)
         .where(
             Document.source.in_(sources),
@@ -99,7 +110,11 @@ def always_included_chunks(db: Session, exclude: list[RetrievedChunk]) -> list[R
         )
         .order_by(Document.source, Chunk.chunk_index)
     ).all()
-    chunks = [RetrievedChunk(s, c, None) for s, c in rows if (s, c) not in already]
+    chunks = [
+        RetrievedChunk(source, content, None, title, SOURCE_FOLDER, chunk_id)
+        for source, content, title, chunk_id in rows
+        if chunk_id not in already
+    ]
     if chunks:
         logger.info("Always included %d chunk(s): %s", len(chunks), "; ".join(c.label for c in chunks))
     return chunks

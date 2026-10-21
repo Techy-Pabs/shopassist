@@ -51,6 +51,19 @@ class AdminDocument(BaseModel):
     updated_at: datetime
 
 
+class ChunkPreview(BaseModel):
+    chunk_index: int
+    # The start of the chunk's text (at most PREVIEW_CHARS characters)
+    content: str
+
+
+class AdminDocumentDetail(AdminDocument):
+    size_bytes: int | None
+    created_at: datetime
+    # The first few chunks, shortened
+    preview: list[ChunkPreview]
+
+
 class UploadedDocument(AdminDocument):
     size_bytes: int
     # Embedding requests this upload used (counts against the daily free quota)

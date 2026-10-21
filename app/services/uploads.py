@@ -17,6 +17,7 @@ from app.services.ai import EMBEDDING_BATCH_SIZE, embed_texts
 from app.services.chunking import chunk_markdown
 from app.services.extraction import UploadError, clean_filename, extract_text, too_large
 from app.services.ingestion import content_hash
+from app.services.untrusted import neutralize_tags
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,10 @@ def process_upload(
     Nothing is saved unless every step succeeds.
     """
     name = clean_filename(filename)
-    text = extract_text(name, data)
-    title = (title or "").strip() or PurePosixPath(name).stem
+    # Uploaded text is untrusted: anything posing as the prompt's tags is
+    # replaced before the text is stored, hashed, chunked or embedded
+    text = neutralize_tags(extract_text(name, data))
+    title = neutralize_tags((title or "").strip() or PurePosixPath(name).stem)
 
     new_hash = content_hash(text)
     duplicate = db.scalar(select(Document).where(Document.content_hash == new_hash).limit(1))
