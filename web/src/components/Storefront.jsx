@@ -11,7 +11,7 @@ export default function Storefront() {
         <a href="#" className="font-serif text-brand text-ink no-underline">
           {store.name}
         </a>
-        <nav aria-label="Main" className="flex flex-wrap gap-7 text-body-small font-medium">
+        <nav aria-label="Main" className="flex flex-wrap gap-x-7 gap-y-2 text-body-small font-medium">
           {storefront.nav.map((item) => (
             <a key={item} href="#" className="text-ink no-underline">
               {item}
@@ -23,7 +23,8 @@ export default function Storefront() {
         </a>
       </header>
 
-      <main className="mx-auto max-w-page px-4 pb-16 pt-12 sm:px-12">
+      {/* box-content: the page width is the content's, padding outside it, as in the mockups */}
+      <main className="mx-auto box-content max-w-page px-4 pb-16 pt-12 sm:px-12">
         <section className="flex flex-wrap items-center gap-12">
           <div className="flex min-w-0 shrink grow basis-hero-copy-basis flex-col gap-5">
             <p className="m-0 text-eyebrow uppercase text-ink-muted">{storefront.eyebrow}</p>

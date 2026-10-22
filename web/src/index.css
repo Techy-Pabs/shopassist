@@ -15,8 +15,9 @@
   }
 
   /* Links are clay and turn ink on hover, as in the mockups */
+  /* Underlined, as in the mockups, so links don't rely on colour alone */
   a {
-    @apply text-clay;
+    @apply text-clay underline;
   }
   a:hover {
     @apply text-ink;

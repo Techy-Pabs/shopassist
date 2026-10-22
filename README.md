@@ -28,7 +28,7 @@ To try it, register with **POST /auth/register**, log in with **POST /auth/login
 - Clear error responses when the AI is slow, rate limited or unavailable
 - Database migrations with Alembic
 - Interactive API documentation (Swagger UI) at `/docs`
-- An automated test suite (213 tests) that uses its own database, a fake AI and fake embeddings, so it never touches real data or makes real AI calls
+- An automated test suite (251 tests) that uses its own database, a fake AI and fake embeddings, so it never touches real data or makes real AI calls
 - A quality check for the knowledge base: retrieval and answer checks against a list of test questions
 
 ## Roadmap
@@ -39,7 +39,7 @@ Only the checked items are done. The others are planned and are **not** built ye
 - [x] **Milestone 2, knowledge base:** answer questions from the store's own policies and information (see [Knowledge base](#knowledge-base))
 - [x] **Milestone 3, admin role:** customer and admin roles, and read only admin endpoints (see [Admins](#admins))
 - [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base through the API, instead of editing files (see [Uploading documents](#uploading-documents))
-- [ ] **Milestone 5, chat interface:** a web frontend for customers (today the API is used through Swagger UI or any HTTP client)
+- [ ] **Milestone 5, chat interface:** a web frontend for customers. In progress: built in `web/` (see [Chat frontend](#chat-frontend)), not deployed yet
 - [ ] **Milestone 6, admin dashboard:** a web interface for store staff to review conversations and the knowledge base
 
 ## Tech stack
@@ -54,6 +54,7 @@ Only the checked items are done. The others are planned and are **not** built ye
 | Configuration | pydantic-settings, read from environment variables or a `.env` file |
 | Testing | Pytest, FastAPI TestClient |
 | Containers | Docker, Docker Compose |
+| Frontend | React 19, Vite 7, Tailwind CSS 3.4, Vitest 3, React Testing Library, axe-core (see [Chat frontend](#chat-frontend)) |
 
 ## Architecture
 
@@ -97,6 +98,7 @@ quality/             questions.json and a test document for the knowledge base q
 docker/db/           local PostgreSQL 16 image with pgvector
 scripts/start.sh     production start: migrations, ingestion, API
 tests/               Pytest suite
+web/                 the chat frontend, self-contained (see Chat frontend)
 ```
 
 ## Security and design decisions
@@ -140,6 +142,7 @@ These reduce the risk; they don't remove it. Removing fake tags stops a document
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2 (the `docker compose` command)
 - Git
 - An OpenRouter account for AI replies (free, see below). Everything else works without it.
+- Node 22 LTS, only for the chat frontend (see [Chat frontend](#chat-frontend))
 
 ### 1. Clone the repository
 
@@ -275,9 +278,98 @@ The tests:
 - cover uploads: each file type, the content checks (a renamed file is rejected), every limit, scanned and password protected PDFs, duplicates, file names, embedding failures saving nothing, detail and delete, startup ingestion never touching uploads, fake prompt tags being removed, and uploaded chunks reaching chat
 - cover the admin role: `401` and `403` on every admin endpoint, admins getting `200`, registration ignoring a role, promoting and demoting taking effect without a new token, pagination limits, no password hashes in admin responses, and the promote and demote command
 
-There are 213 tests.
+There are 251 tests.
 
 Test tools (`requirements-dev.txt`) are only installed in the test image, not in the image the API runs from.
+
+## Chat frontend
+
+`web/` is the customer facing website: a small storefront for the demo store, Loom & Lane, with a chat widget in the corner. Customers sign in or create an account inside the widget, ask a question or tap a suggested one, read the assistant's replies, and reopen past conversations. On a phone the widget fills the screen; on a computer it floats over the page.
+
+It talks to the API only over HTTP and never imports backend code. It has its own `package.json`, tests and build, and nothing in `web/` refers to a file outside it, so it can move to its own repository unchanged.
+
+A few behaviours worth knowing:
+
+- The login token is kept in `sessionStorage`, so it is forgotten when the tab closes. Any `401` returns to sign in with "Your session ended. Please sign in again."
+- A conversation is created with the first message, so opening the widget never leaves empty conversations behind.
+- When the free Render service is asleep, the widget shows "Getting the assistant ready" while it wakes, and after 90 seconds an "unavailable" card with **Try again**.
+- Replies are shown as plain text, never as HTML.
+
+### Running it locally
+
+You need two servers: the API (in Docker) and the frontend's development server (in Node).
+
+1. Start the API from the project root, as in [Running the app](#running-the-app):
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+2. In a second terminal, start the frontend. It needs Node 22; in WSL, install it with [nvm](https://github.com/nvm-sh/nvm) (`nvm install 22`).
+
+   ```bash
+   cd web
+   cp .env.example .env.local   # sets VITE_API_URL=http://localhost:8000
+   npm ci                       # installs the exact versions in package-lock.json
+   npm run dev
+   ```
+
+3. Open **http://localhost:5173**, exactly that address.
+
+**Why exactly that address.** The browser treats the page and the API as different sites (an "origin" is the scheme, host and port together). Before it lets the page read the API's replies, it checks the API's CORS headers, and the API only allows the origins in `ALLOWED_ORIGINS`, whose local default is `http://localhost:5173`. So:
+
+- `http://127.0.0.1:5173` is the same machine but a different origin, and is blocked.
+- Another port is blocked too. That is why the development server is set to stop with an error, instead of quietly moving to port 5174, when 5173 is already in use. Stop whatever is using it, or add the other address to `ALLOWED_ORIGINS` in `.env` and restart the API.
+
+When requests are blocked, signing in shows "We couldn't reach the assistant" (once signed in, the widget shows the waking screen instead, as if the API were asleep), and the browser's console shows a CORS error.
+
+`.env.local` is ignored by git. `VITE_API_URL` is built into the JavaScript the browser downloads, so it is public: never put a secret in a `VITE_` variable.
+
+Other commands, run in `web/`:
+
+```bash
+npm run build     # production files in web/dist
+npm run preview   # serve the production build locally
+```
+
+Chatting uses the free AI quota exactly as it does in Swagger UI: two requests per message.
+
+### Frontend tests
+
+```bash
+cd web
+npm test              # once
+npm run test:watch    # again on every change
+```
+
+The 115 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. They cover:
+
+- signing in, creating an account, wrong passwords, the server's validation messages, and a `401` on any call returning to sign in
+- sending: the bubble, the typing indicator and the reply; the unavailable card and **Try again**; `422` messages; a reply containing `<b>` or `<script>` shown as literal text
+- suggestion chips, waking the API, following new messages, and the conversation history (groups, dates, loading, empty and error states, new conversation)
+- the panel: **Escape**, focus moving in and back to the launcher, focus kept inside the full screen panel on phones, and the header staying in place while only the area below it scrolls
+- accessibility: [axe](https://github.com/dequelabs/axe-core) checks of the storefront and every panel view at phone and desktop sizes, and animations only when the visitor hasn't asked for reduced motion
+- the design system: no colour, pixel size or one-off Tailwind value outside the tokens
+
+### Accessibility approach
+
+Accessibility is checked in three ways. The test suite runs axe on the storefront and every panel view, at phone and desktop sizes, so a regression fails the tests. The simulated browser can't measure colour contrast, so axe is also run in real Chrome, contrast included, on every screen at 1280x800 and 390x844 (no violations). And a keyboard only pass goes through the whole journey in real Chrome (open, sign in, a suggestion, send, history, back, sign out and **Escape**), checking at every stop that focus lands in the right place, shows the indigo focus ring and is on screen. Every control in the widget is a touch target of at least 44px (48px for the main controls on phones), except links inside a sentence. Animations run only when the visitor hasn't asked for reduced motion, and a test fails if one isn't guarded.
+
+### Design system and mockups
+
+- **Tokens.** `web/design/tokens.json` holds the Loom & Lane design tokens: colours, fonts, type sizes, spacing, sizes, radii and shadows. Version 2 adds values the mockups needed, each marked `"extra": true`.
+- **Tailwind from the tokens.** `web/tokens.theme.js` turns the tokens into Tailwind's theme and replaces Tailwind's defaults, so only token values exist. A test (`web/src/tokens-only.test.js`) fails if the code uses a colour, a pixel size or an arbitrary value like `w-[123px]` directly.
+- **Brand rules.** `web/design/README.md`: the voice, the folded tag bubbles, the adire band, the stitched rule, borders instead of shadows, and the focus ring.
+- **Mockups.** `web/design/mockups/` holds the eight approved screens: the storefront, the desktop chat, and sign in, welcome, conversation, error, waking and history on a phone. With the development server running, open them at, for example, `http://localhost:5173/design/mockups/Main.dc.html`. The built screens are compared with them side by side at 1280x800 and 390x844 (by eye; automated pixel comparison isn't used).
+- **Fonts.** Fraunces and Manrope, from Google Fonts.
+
+Where the built screens differ from the mockups on purpose: accounts have no names, so the welcome reads "Hello, how can we help?"; a conversation's title is the customer's first words; the WhatsApp number is shown as text until a real number is configured in `web/src/config/store.js`; and there is a **Sign out** link under the message box.
+
+### Dependencies and npm audit
+
+`npm audit` in `web/` reports 10 issues (2 critical, 5 high, 3 moderate), all in development tools: Vitest, the test runner, and Tailwind CSS 3, with the file watching and CSS parsing packages they use. These run only on a developer's machine or during the build. None is in what ships: `npm audit --omit=dev` finds 0, and the built site is static HTML, CSS and JavaScript whose only libraries are React and React DOM.
+
+The fixes need major upgrades with breaking changes: Vitest 4 or later (npm now suggests 5) and Tailwind 4, which changes how it is configured, so the token theme would need rewriting. Upgrading to Vitest 4 and Tailwind 4 is deferred.
 
 ## Knowledge base
 
@@ -328,7 +420,7 @@ Latest results:
 - **Retrieval:** for all 14 questions the store information covers, the expected document ranked first.
 - **Threshold:** relevant documents scored 0.415 or more, and the best match for an uncovered question scored 0.194. `RAG_MIN_SIMILARITY` is set to 0.30, roughly midway, to leave room for wording the check doesn't cover.
 - **Answers:** 5 of 5 passed (delivery to Abuja, a follow up about cost, the pay on delivery limit, laptops, and the injection attempt, which was refused).
-- **Tests:** 58 automated tests passed at the end of Milestone 2 (213 now, with the admin and upload tests).
+- **Tests:** 58 automated tests passed at the end of Milestone 2 (251 now, with the admin, upload and Milestone 5 tests).
 - **Milestone 4 (uploads):** with the test document uploaded, `upload-fact` used the real fact (₦1,500) and `upload-injection` refused the 90% discount without repeating or describing the hidden instruction; `laptops` gave the contact details without mentioning how the assistant works. All 3 passed, answered by the fallback model while the main model's provider was down.
 
 The answer check matches text, so it's a guide; reading the replies is still worthwhile. Every reply is also checked for phrases that reveal how the assistant works (such as "store information" or "the documents I can access"), which the assistant is told never to mention.

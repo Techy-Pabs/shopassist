@@ -133,7 +133,9 @@ export default function SignInForm({ emailRef }) {
         </p>
       )}
 
-      <div role="tablist" aria-label="Account" className="grid grid-cols-2 rounded-pill bg-sand p-1">
+      {/* Each tab fills the track (a full size touch target); the pill
+          drawn inside it keeps the mockup's look */}
+      <div role="tablist" aria-label="Account" className="grid grid-cols-2 rounded-pill bg-sand">
         {MODES.map((m) => {
           const selected = m.id === mode
           return (
@@ -148,11 +150,11 @@ export default function SignInForm({ emailRef }) {
               tabIndex={selected ? 0 : -1}
               onClick={() => selectMode(m.id)}
               onKeyDown={onTabKeyDown}
-              className={`h-avatar cursor-pointer rounded-pill border-0 font-sans text-label text-ink ${
-                selected ? 'bg-surface-raised' : 'bg-transparent'
-              }`}
+              className="h-control-lg cursor-pointer rounded-pill border-0 bg-transparent p-1 font-sans text-label text-ink"
             >
-              {m.label}
+              <span className={`flex h-full items-center justify-center rounded-pill ${selected ? 'bg-surface-raised' : ''}`}>
+                {m.label}
+              </span>
             </button>
           )
         })}

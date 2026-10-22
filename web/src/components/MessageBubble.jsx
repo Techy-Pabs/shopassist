@@ -1,7 +1,8 @@
 import Monogram from './Monogram.jsx'
 
-// Bubble widths: the bubble-mobile token on mobile, bubble-desktop above
-const width = 'max-w-bubble-mobile sm:max-w-bubble-desktop'
+// Bubble widths: the bubble-mobile token on mobile, bubble-desktop above.
+// As in the mockups, the width is the text's, with the padding outside it.
+const width = 'box-content max-w-bubble-mobile sm:max-w-bubble-desktop'
 // Folded tag: three large corners and a small one nearest the sender.
 // whitespace-pre-wrap keeps the reply's line breaks.
 const text = 'm-0 whitespace-pre-wrap break-words px-4 py-3 text-body'

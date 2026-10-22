@@ -8,6 +8,14 @@ import HistoryList from './HistoryList.jsx'
 import PanelHeader, { HistoryHeader } from './PanelHeader.jsx'
 import SignInForm from './SignInForm.jsx'
 
+// The header's subtitle follows the chat, as in the mockups
+const SUBTITLES = {
+  connecting: 'Connecting',
+  typing: 'Typing',
+  unavailable: 'AI assistant',
+  ready: 'AI assistant, replies in seconds',
+}
+
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 // The chat panel: full screen and modal below the mobile breakpoint, a
@@ -28,6 +36,8 @@ export default function ChatPanel({ onClose }) {
   const [chatKey, setChatKey] = useState(0)
   // Where focus goes after switching views
   const [focusNext, setFocusNext] = useState(null)
+  // What the chat is doing, for the header (see ChatView)
+  const [chatStatus, setChatStatus] = useState('ready')
 
   useEffect(() => {
     if (!focusNext) return
@@ -115,9 +125,10 @@ export default function ChatPanel({ onClose }) {
       ) : (
         <PanelHeader
           titleId={titleId}
-          subtitle={isSignedIn ? 'AI assistant, replies in seconds' : 'AI assistant'}
+          subtitle={isSignedIn ? SUBTITLES[chatStatus] : 'AI assistant'}
           onClose={onClose}
-          onHistory={isSignedIn ? showHistory : undefined}
+          // Not while the assistant is waking: there is nothing to list yet
+          onHistory={isSignedIn && chatStatus !== 'connecting' ? showHistory : undefined}
           historyRef={historyButtonRef}
         />
       )}
@@ -125,7 +136,7 @@ export default function ChatPanel({ onClose }) {
       {isSignedIn && (
         // hidden, not unmounted, while the list shows
         <div className={view === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-          <ChatView key={chatKey} inputRef={focusRef} />
+          <ChatView key={chatKey} inputRef={focusRef} onStatus={setChatStatus} />
         </div>
       )}
       {isSignedIn && view === 'history' && (

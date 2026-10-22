@@ -18,7 +18,7 @@ let localKey = 0
 
 // The signed in chat: the waking screen, the welcome screen, or the
 // conversation, with the input below.
-export default function ChatView({ inputRef }) {
+export default function ChatView({ inputRef, onStatus }) {
   const { api, draft, setDraft, signOut } = useSession()
   const wake = useWake(api)
   const [conversationId, setConversationId] = useState(loadConversationId)
@@ -138,13 +138,30 @@ export default function ChatView({ inputRef }) {
     if (!showWelcome && stickToBottom.current) endRef.current?.scrollIntoView?.({ block: 'end' })
   }, [messages, waiting, failed, showWelcome])
 
+  // For the panel header: "connecting", "typing", "unavailable" or "ready"
+  const status =
+    wake.state === 'waking' ? 'connecting'
+    : waiting ? 'typing'
+    : failed || wake.state === 'unavailable' ? 'unavailable'
+    : 'ready'
+  useEffect(() => {
+    onStatus?.(status)
+  }, [status, onStatus])
+
   if (wake.state === 'waking') return <WakingScreen elapsed={wake.elapsed} total={GIVE_UP_AFTER} />
 
   return (
     <>
       <div ref={scrollRef} onScroll={onScroll} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {showWelcome ? (
-          <WelcomeScreen onSuggestion={(label) => send(label)} disabled={waiting} />
+          <WelcomeScreen
+            onSuggestion={(label) => {
+              // The chips go away once it's sent: keep keyboard users in place
+              inputRef.current?.focus()
+              send(label)
+            }}
+            disabled={waiting}
+          />
         ) : (
           <div className="flex flex-col gap-2 p-4">
             {messages.map((message, index) => {

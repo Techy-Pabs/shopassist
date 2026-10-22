@@ -5,9 +5,10 @@ import Monogram from './Monogram.jsx'
 // desktop. Hidden while the panel is open (the panel takes its corner).
 export default function Launcher({ ref, onOpen, showInvitation = true }) {
   return (
-    <div className="fixed bottom-4 right-4 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8">
+    // A landmark, so the invitation is found when moving between page regions
+    <aside aria-label="Chat" className="fixed bottom-4 right-4 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8">
       {showInvitation && (
-        <p className="m-0 hidden max-w-invitation rounded-lg rounded-br-sm border border-sand bg-surface-raised px-4 py-3 text-body-small text-ink sm:block">
+        <p className="m-0 hidden box-content max-w-invitation rounded-lg rounded-br-sm border border-sand bg-surface-raised px-4 py-3 text-body-small text-ink sm:block">
           {launcher.invitation}
         </p>
       )}
@@ -22,6 +23,6 @@ export default function Launcher({ ref, onOpen, showInvitation = true }) {
         <Monogram variant="launcher" />
         {launcher.label}
       </button>
-    </div>
+    </aside>
   )
 }

@@ -46,16 +46,17 @@ export default function Composer({ value, onChange, onSend, onSignOut, waiting, 
           {error}
         </p>
       )}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="m-0 text-caption font-normal text-ink-muted">
+      <div className="flex items-center justify-between gap-3">
+        <p className="m-0 min-w-0 text-caption font-normal text-ink-muted">
           An AI assistant. For a specific order, email <a href={`mailto:${store.supportEmail}`}>{store.supportEmail}</a>
         </p>
         {onSignOut && (
-          // Styled like the footer's link: a small text action, not a big button
+          // Styled like the footer's link: small text, but a full size touch
+          // target, in its own column beside the text so it overlaps nothing
           <button
             type="button"
             onClick={onSignOut}
-            className="cursor-pointer border-0 bg-transparent p-0 font-sans text-caption font-normal text-clay underline hover:text-ink"
+            className="flex min-h-control min-w-control shrink-0 cursor-pointer items-center justify-end border-0 bg-transparent p-0 font-sans text-caption font-normal text-clay underline hover:text-ink"
           >
             Sign out
           </button>

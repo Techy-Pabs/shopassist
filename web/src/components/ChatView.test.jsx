@@ -57,6 +57,18 @@ describe('the welcome screen', () => {
     expect(sentContent(callsTo(fetch, 'POST', '/conversations/42/messages')[0])).toBe('Can I pay on delivery?')
     expect(screen.getByText('Can I pay on delivery?', { selector: 'p' })).toBeInTheDocument() // the customer bubble
   })
+
+  it('after a chip, focus moves to the input (the chips are gone)', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': reply('Track it from your confirmation email.') })
+    await openChat(user)
+
+    const chip = await screen.findByRole('button', { name: "Where's my order?" })
+    chip.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('Track it from your confirmation email.')).toBeInTheDocument()
+    expect(input()).toHaveFocus()
+  })
 })
 
 describe('sending a message', () => {
@@ -218,6 +230,16 @@ describe('when something goes wrong', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The assistant is unavailable right now')
   })
 
+  it('shows the placeholder WhatsApp number as text, not a link', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': { status: 502, body: {} } })
+    await openChat(user)
+    await ask(user, 'Do you deliver to Port Harcourt?')
+
+    const card = await screen.findByRole('alert')
+    expect(within(card).getByText('WhatsApp +234 800 000 0000')).toBeInTheDocument()
+    expect(within(card).queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('a 422 shows the message under the input and gives the text back', async () => {
     const { user } = setup({
       'POST /conversations/42/messages': { status: 422, body: { detail: [{ loc: ['body', 'content'], msg: 'String should have at most 2000 characters' }] } },
@@ -251,6 +273,39 @@ describe('when something goes wrong', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in and start chatting' }))
 
     expect(await screen.findByRole('textbox', { name: 'Your question' })).toHaveValue('Where is my parcel?')
+  })
+})
+
+describe('a 401 on any call returns to sign in', () => {
+  const ENDED = { status: 401, body: { detail: 'Could not validate credentials' } }
+  const FAILED = { status: 502, body: { detail: 'The assistant is unavailable right now.' } }
+
+  async function expectSignIn() {
+    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
+    expect(screen.getByText('Your session ended. Please sign in again.')).toBeInTheDocument()
+    expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
+  }
+
+  it('loading a conversation', async () => {
+    window.sessionStorage.setItem(CONVERSATION_KEY, '42')
+    const { user } = setup({ 'GET /conversations/42/messages': ENDED })
+    await openChat(user)
+    await expectSignIn()
+  })
+
+  it('creating a conversation', async () => {
+    const { user } = setup({ 'POST /conversations': ENDED })
+    await openChat(user)
+    await ask(user, 'Hello?')
+    await expectSignIn()
+  })
+
+  it('Try again', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': FAILED, 'POST /conversations/42/retry': ENDED })
+    await openChat(user)
+    await ask(user, 'Hello?')
+    await user.click(await screen.findByRole('button', { name: 'Try again' }))
+    await expectSignIn()
   })
 })
 
@@ -386,5 +441,48 @@ describe('signing out', () => {
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
     expect(window.sessionStorage.getItem(CONVERSATION_KEY)).toBeNull()
     expect(screen.queryByText(/Your session ended/)).not.toBeInTheDocument()
+  })
+})
+
+describe('the header follows the chat', () => {
+  afterEach(() => vi.useRealTimers())
+  const subtitle = () => screen.getByRole('heading', { name: 'Loom & Lane' }).nextElementSibling
+
+  it('says "Typing" while a reply is on its way', async () => {
+    const pending = deferred()
+    const { user } = setup({ 'POST /conversations/42/messages': () => pending.promise })
+    await openChat(user)
+    expect(subtitle()).toHaveTextContent('AI assistant, replies in seconds')
+
+    await ask(user, 'Do you deliver to Kano?')
+    expect(subtitle()).toHaveTextContent(/^Typing$/)
+
+    await act(async () => pending.resolve(reply('Yes, in 3 to 5 business days.')))
+    expect(subtitle()).toHaveTextContent('AI assistant, replies in seconds')
+  })
+
+  it('says only "AI assistant" when the assistant is unavailable', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': { status: 502, body: { detail: 'The assistant is unavailable right now.' } } })
+    await openChat(user)
+
+    await ask(user, 'Do you deliver to Port Harcourt?')
+
+    await screen.findByRole('alert')
+    expect(subtitle()).toHaveTextContent(/^AI assistant$/)
+  })
+
+  it('says "Connecting" while waking, without the history button', async () => {
+    const pending = deferred()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { user } = setup({ 'GET /health': () => pending.promise }, { userOptions: { advanceTimers: vi.advanceTimersByTime } })
+    await openChat(user)
+
+    await act(async () => vi.advanceTimersByTime(3_000))
+    expect(subtitle()).toHaveTextContent(/^Connecting$/)
+    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
+
+    await act(async () => pending.resolve({ status: 200, body: { status: 'ok' } }))
+    expect(subtitle()).toHaveTextContent('AI assistant, replies in seconds')
+    expect(screen.getByRole('button', { name: 'Conversation history' })).toBeInTheDocument()
   })
 })
