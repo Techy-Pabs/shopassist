@@ -17,8 +17,12 @@ import math
 import sys
 from pathlib import Path
 
+from sqlalchemy import select
+
 from app.core.config import settings
 from app.db.session import SessionLocal
+from app.models import Document
+from app.models.document import SOURCE_UPLOAD
 from app.services.ai import EMBEDDING_BATCH_SIZE, AIServiceError, embed_texts, generate_reply
 from app.services.prompts import build_system_prompt
 from app.services.retrieval import (
@@ -32,7 +36,11 @@ QUESTIONS_FILE = Path("quality/questions.json")
 
 
 def load_questions(path: Path) -> list[dict]:
-    return json.loads(path.read_text(encoding="utf-8"))["questions"]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    # Phrases that reveal how the assistant works are banned in every reply
+    for q in data["questions"]:
+        q["must_not_contain"] = q.get("must_not_contain", []) + data.get("no_internal_terms", [])
+    return data["questions"]
 
 
 def search_text_for(q: dict) -> str:
@@ -98,7 +106,25 @@ def run_retrieval_check(questions: list[dict]) -> int:
     return 0 if misses == 0 else 1
 
 
+def missing_setup_documents(questions: list[dict]) -> list[str]:
+    """Upload files that some questions need but that aren't in the database."""
+    needed = {q["expected_document"]: q["setup"] for q in questions if q.get("setup")}
+    if not needed:
+        return []
+    with SessionLocal() as db:
+        present = set(db.scalars(
+            select(Document.source).where(Document.source_type == SOURCE_UPLOAD, Document.source.in_(needed))
+        ))
+    return sorted(setup for source, setup in needed.items() if source not in present)
+
+
 def run_answer_check(questions: list[dict]) -> int:
+    missing = missing_setup_documents(questions)
+    if missing:
+        # Stop before any request: without the document these checks prove nothing
+        print("These checks need a document that isn't uploaded: " + ", ".join(missing), file=sys.stderr)
+        print("Upload it first (locally only), then run the check again. No requests were used.", file=sys.stderr)
+        return 2
     vectors = embed_texts([search_text_for(q) for q in questions], "query")
     requests = math.ceil(len(questions) / EMBEDDING_BATCH_SIZE)
     failures = 0
@@ -141,6 +167,8 @@ def main() -> int:
     parser.add_argument("--file", type=Path, default=QUESTIONS_FILE)
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+    # Show which model answered each reply (never the text)
+    logging.getLogger("app.services.ai").setLevel(logging.INFO)
 
     questions = load_questions(args.file)
     if args.ids:

@@ -7,6 +7,7 @@ them in _PROVIDERS / _EMBEDDING_PROVIDERS.
 """
 
 import logging
+import re
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Literal
@@ -20,6 +21,19 @@ logger = logging.getLogger(__name__)
 
 # A message in the conversation: {"role": "user" | "assistant", "content": "..."}
 ChatMessage = dict[str, str]
+
+
+# Safety classifier models answer with a label such as "User Safety: safe"
+# instead of a reply. A router like openrouter/free can pick one by mistake.
+_CLASSIFIER_LABEL = re.compile(
+    r"^\W*(?:(?:user|response|prompt|content)\s+)?safety\s*:\W*(?:safe|unsafe)\b|^\W*(?:safe|unsafe)\W*$",
+    re.IGNORECASE,
+)
+
+
+def looks_like_classifier_label(reply: str) -> bool:
+    """True for a safety classifier's verdict ("User Safety: safe", "unsafe"), not a reply."""
+    return bool(_CLASSIFIER_LABEL.search(reply.strip()))
 
 
 class AIServiceError(Exception):
@@ -43,10 +57,14 @@ def _openrouter_client() -> OpenAI:
 
 def _openrouter_reply(system_prompt: str, history: list[ChatMessage]) -> str:
     try:
+        models = settings.ai_models
         response = _openrouter_client().chat.completions.create(
-            model=settings.ai_model,
+            model=models[0],
             messages=[{"role": "system", "content": system_prompt}, *history],
             max_tokens=settings.ai_max_tokens,
+            # OpenRouter's fallback list: if the first model can't answer
+            # (for example its provider is down), the next one is tried
+            **({"extra_body": {"models": models}} if len(models) > 1 else {}),
         )
     except openai.APIStatusError as exc:
         # Only the status code is logged: the error body could echo the request
@@ -61,9 +79,17 @@ def _openrouter_reply(system_prompt: str, history: list[ChatMessage]) -> str:
     if not reply or not reply.strip():
         logger.warning("AI provider returned an empty reply (model=%s)", response.model)
         raise AIServiceError("empty reply")
+    if looks_like_classifier_label(reply):
+        # Never show the customer a classifier's verdict as if it were an answer
+        logger.warning("AI provider returned a safety classifier label instead of a reply (model=%s)", response.model)
+        raise AIServiceError("classifier label instead of a reply")
 
-    # With openrouter/free, response.model is the model the router picked
-    logger.info("AI reply from provider=openrouter model=%s", response.model)
+    # response.model is the model that actually answered
+    fallback = response.model not in (settings.ai_model, settings.ai_model.removesuffix(":free"))
+    logger.info(
+        "AI reply from provider=openrouter model=%s%s",
+        response.model, f" (fallback; {settings.ai_model} did not answer)" if fallback else "",
+    )
     return reply.strip()
 
 

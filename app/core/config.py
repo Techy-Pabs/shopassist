@@ -22,7 +22,11 @@ class Settings(BaseSettings):
     # the AI service fails cleanly if it's missing when a reply is needed.
     openrouter_api_key: str | None = None
     ai_timeout_seconds: float = 30
-    ai_max_tokens: int = 500
+    # Room for models that reason before answering, so replies aren't cut off
+    ai_max_tokens: int = 1000
+    # Models to try, in order, if AI_MODEL can't answer (comma separated).
+    # Sent as OpenRouter's fallback list, so one model's outage doesn't stop chat.
+    ai_fallback_models: str = ""
 
     embedding_model: str = "nvidia/nemotron-3-embed-1b:free"
     # Must match the size of the chunks.embedding column, which is fixed
@@ -47,6 +51,12 @@ class Settings(BaseSettings):
     upload_max_chars: int = 60_000
     # 64 = one embedding batch, so every upload costs exactly one request
     upload_max_chunks: int = 64
+
+    @property
+    def ai_models(self) -> list[str]:
+        """AI_MODEL first, then each fallback, without repeats."""
+        models = [self.ai_model] + [m.strip() for m in self.ai_fallback_models.split(",") if m.strip()]
+        return list(dict.fromkeys(models))
 
     @property
     def rag_always_include_list(self) -> list[str]:
