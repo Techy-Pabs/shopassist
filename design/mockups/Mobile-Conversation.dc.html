@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conversation in progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=Manrope:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F0E6}
+a{color:#A34A28}a:hover{color:#2B2420}
+.adire{background-color:#2E3A59;background-image:radial-gradient(circle,#DDE2EC 2px,transparent 2.5px);background-size:14px 14px;background-position:7px 7px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #F6F0E6; color: #2B2420; font-family: 'Manrope', system-ui, sans-serif; overflow: hidden;">
+  <div style="display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 16px; background: #2E3A59; color: #F6F0E6;">
+    <div aria-hidden="true" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: #F6F0E6; color: #2E3A59; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-size: 14px; font-weight: 600;">L&amp;L</div>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+      <span style="font-family: 'Fraunces', Georgia, serif; font-size: 18px; font-weight: 600; line-height: 24px;">Loom &amp; Lane</span>
+      <span style="font-size: 12px; line-height: 16px; color: #DDE2EC;">Typing</span>
+    </div>
+    <button aria-label="Conversation history" style="width: 44px; height: 44px; border: 0; background: transparent; color: #F6F0E6; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+    </button>
+    <button aria-label="Close chat" style="width: 44px; height: 44px; border: 0; background: transparent; color: #F6F0E6; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+  </div>
+  <div class="adire" aria-hidden="true" style="height: 14px; flex-shrink: 0;"></div>
+
+  <div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 16px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+      <span aria-hidden="true" style="flex: 1; border-top: 1px dashed #E7DCCB;"></span>
+      <span style="font-size: 12px; font-weight: 500; color: #6B5E52;">Today, 2:14 pm</span>
+      <span aria-hidden="true" style="flex: 1; border-top: 1px dashed #E7DCCB;"></span>
+    </div>
+
+    <div style="align-self: flex-end; max-width: 80%; padding: 12px 16px; background: #2E3A59; color: #F6F0E6; border-radius: 18px 18px 4px 18px; font-size: 15px; line-height: 22px;">I bought a dress on sale and it doesn't fit. Can I return it for a refund?</div>
+
+    <div style="display: flex; align-items: flex-end; gap: 8px; margin-top: 16px;">
+      <div aria-hidden="true" style="width: 28px; height: 28px; flex-shrink: 0; border-radius: 999px; background: #2E3A59; color: #F6F0E6; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-size: 10px; font-weight: 600;">L&amp;L</div>
+      <div style="max-width: 80%; padding: 12px 16px; background: #FFFBF5; border: 1px solid #E7DCCB; border-radius: 18px 18px 18px 4px; font-size: 15px; line-height: 22px;">Sale items can't be refunded, but you can exchange it for a different size. Our dresses run slim, so if you're between sizes, go one size up.</div>
+    </div>
+
+    <div style="align-self: flex-end; max-width: 80%; margin-top: 16px; padding: 12px 16px; background: #2E3A59; color: #F6F0E6; border-radius: 18px 18px 4px 18px; font-size: 15px; line-height: 22px;">Okay. Is the exchange free? I'm in Lagos.</div>
+
+    <div style="display: flex; align-items: flex-end; gap: 8px; margin-top: 16px;">
+      <div aria-hidden="true" style="width: 28px; height: 28px; flex-shrink: 0; border-radius: 999px; background: #2E3A59; color: #F6F0E6; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-size: 10px; font-weight: 600;">L&amp;L</div>
+      <div role="status" aria-label="Loom &amp; Lane is typing" style="display: flex; gap: 6px; padding: 16px; background: #FFFBF5; border: 1px solid #E7DCCB; border-radius: 18px 18px 18px 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #8C7D6E;"></span>
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #8C7D6E; opacity: .6;"></span>
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #8C7D6E; opacity: .3;"></span>
+      </div>
+    </div>
+  </div>
+
+  <form style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 24px; border-top: 1px solid #E7DCCB;">
+    <div style="display: flex; gap: 8px;">
+      <label for="msg-conv" class="sr">Your question</label>
+      <input id="msg-conv" type="text" placeholder="Wait for the reply, or type your next question" style="flex: 1; min-width: 0; height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #8C7D6E; border-radius: 4px; background: #FFFBF5; color: #2B2420; font-family: inherit; font-size: 15px;">
+      <button type="submit" disabled aria-label="Send, available once the reply arrives" style="width: 48px; height: 48px; flex-shrink: 0; border: 1px solid #8C7D6E; border-radius: 4px; background: #E7DCCB; color: #6B5E52; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </button>
+    </div>
+    <p style="margin: 0; font-size: 12px; line-height: 16px; color: #6B5E52;">An AI assistant. For a specific order, email <a href="#">support@loomandlane.example</a></p>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
