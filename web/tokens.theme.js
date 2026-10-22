@@ -93,7 +93,13 @@ export function buildTheme(tokens) {
     minWidth: lengths,
     minHeight: { ...lengths, screen: '100vh', dvh: '100dvh' },
     maxWidth: { ...lengths, none: 'none' },
-    maxHeight: { ...lengths, none: 'none' },
+    maxHeight: {
+      ...lengths,
+      none: 'none',
+      // The floating panel always fits the window, with space-8 above and
+      // below it (the same gap it keeps from the window's edge)
+      'panel-fit': `calc(100dvh - ${spacing['8']} * 2)`,
+    },
     flexBasis: lengths,
     borderRadius: { none: '0', ...Object.fromEntries(tokens.radius.tokens.map((t) => [radiusKey(t.name), t.value])) },
     borderWidth,
@@ -102,6 +108,14 @@ export function buildTheme(tokens) {
     boxShadow: { none: 'none', ...Object.fromEntries(tokens.shadow.tokens.map((t) => [t.name.replace(/^shadow-/, ''), t.value])) },
     opacity: { 0: '0', 100: '1', ...byName(tokens.opacity.tokens) },
     transitionDuration: { 0: '0s', ...byName(tokens.motion.tokens) },
+    // The chat panel slides up over panel-slide, rising by space-6
+    keyframes: {
+      'panel-in': {
+        from: { opacity: '0', transform: `translateY(${spacing['6']})` },
+        to: { opacity: '1', transform: 'translateY(0)' },
+      },
+    },
+    animation: { none: 'none', 'panel-in': `panel-in ${byName(tokens.motion.tokens)['panel-slide']} ease-out` },
     // A custom key so CSS can reach the sizes with theme('size.adire-dot')
     size,
   }

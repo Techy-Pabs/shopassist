@@ -37,5 +37,7 @@ describe('the Tailwind theme comes from design/tokens.json', () => {
     expect(theme.borderWidth.DEFAULT).toBe('1px')
     expect(theme.outlineWidth.ring).toBe('2px')
     expect(theme.screens).toEqual({ sm: '640px' })
+    // The desktop panel fits any window height, with space-8 above and below
+    expect(theme.maxHeight['panel-fit']).toBe('calc(100dvh - 32px * 2)')
   })
 })
