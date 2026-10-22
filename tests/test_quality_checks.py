@@ -29,6 +29,7 @@ def test_the_real_question_file_loads():
 
     assert len(questions) == 18
     assert all("store information" in q["must_not_contain"] for q in questions)
+    assert all("**" in q["must_not_contain"] for q in questions)  # no Markdown in any reply
 
 
 def test_answer_check_stops_before_any_request_if_the_upload_is_missing(monkeypatch, session_factory, capsys):

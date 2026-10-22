@@ -191,6 +191,7 @@ docker run --rm python:3.13-slim python -c "import secrets; print(secrets.token_
 | `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES` | No | `20971520` (20 MB) | Largest a Word file may be once unpacked (a .docx is a zip file) |
 | `UPLOAD_MAX_CHARS` | No | `60000` | Most characters of text in one upload |
 | `UPLOAD_MAX_CHUNKS` | No | `64` | Most chunks in one upload. 64 fits in one embedding request. |
+| `ALLOWED_ORIGINS` | No | `http://localhost:5173` | Browser origins allowed to call the API, comma separated (the frontend's address). `*` is rejected. |
 
 PostgreSQL only reads `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` the first time it creates its data. If you change them later, reset the database with `docker compose down -v` (this deletes all data) and start again.
 
@@ -484,6 +485,7 @@ The tables are created on the first start, when the container runs the migration
 | `RAG_TOP_K` | No | Defaults to `4` |
 | `RAG_MIN_SIMILARITY` | No | Defaults to `0.30` |
 | `RAG_ALWAYS_INCLUDE` | No | Defaults to `contact` |
+| `ALLOWED_ORIGINS` | For the frontend | The frontend's address, for example `https://your-app.vercel.app`. Never `*`. |
 | `UPLOAD_MAX_FILE_BYTES`, `UPLOAD_MAX_PDF_PAGES`, `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES`, `UPLOAD_MAX_CHARS`, `UPLOAD_MAX_CHUNKS` | No | Upload limits; the defaults are 5 MB, 200, 20 MB, 60,000 and 64 |
 
 Not needed in production:
@@ -507,7 +509,7 @@ The live instance is at [shopassist-022b.onrender.com/docs](https://shopassist-0
 | POST | `/auth/login` | No | Log in. Body: `email`, `password` | `200` access token, `401` wrong email or password |
 | GET | `/auth/me` | Yes | The logged-in user, including their role | `200`, `401` |
 | POST | `/conversations` | Yes | Start a conversation. Optional body: `title` | `201`, `401` |
-| GET | `/conversations` | Yes | Your conversations, newest first | `200`, `401` |
+| GET | `/conversations` | Yes | Your conversations, most recent activity first, with `updated_at` and `last_message_preview`. `limit` (default 50, at most 100). A conversation is named after its first message. | `200`, `401`, `422` |
 | GET | `/conversations/{conversation_id}/messages` | Yes | Messages in a conversation, oldest first | `200`, `401`, `404` |
 | POST | `/conversations/{conversation_id}/messages` | Yes | Send a message and get the AI's reply. Body: `content` (1 to 2000 characters) | `201` reply, `401`, `404`, `422`, `502` AI unavailable |
 | GET, POST, DELETE | `/admin/...` | Admin | The admin endpoints, see [Admins](#admins) | `200`, `201`, `204`, `401`, `403`, `404`, `409`, `413`, `415`, `422`, `502` |

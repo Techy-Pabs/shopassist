@@ -1,17 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db, get_user_conversation
 from app.models import Conversation, Message, User
-from app.schemas.conversation import ConversationCreate, ConversationResponse
+from app.schemas.conversation import ConversationCreate, ConversationListItem, ConversationResponse
 from app.schemas.message import MessageCreate, MessageResponse
 from app.services.ai import AIServiceError, generate_reply
 from app.services.prompts import build_system_prompt
 from app.services.retrieval import build_search_text, find_store_information
+from app.services.text import shorten
 
 # How many recent messages are sent to the AI as context
 HISTORY_LIMIT = 20
+
+# Lengths for titles made from the first message, and for list previews
+TITLE_LENGTH = 60
+PREVIEW_LENGTH = 80
 
 # Every route in this router requires a logged-in user
 router = APIRouter(
@@ -35,17 +40,39 @@ def create_conversation(
     return conversation
 
 
-@router.get("", response_model=list[ConversationResponse])
+@router.get("", response_model=list[ConversationListItem])
 def list_conversations(
+    limit: int = Query(50, ge=1, le=100, description="How many conversations (at most 100)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # id breaks ties when two rows have the same created_at
-    return db.scalars(
-        select(Conversation)
+    """The current user's conversations, most recent activity first."""
+    # The latest message of each of this user's conversations (DISTINCT ON
+    # keeps the first row per conversation in the given order)
+    latest = (
+        select(Message.conversation_id, Message.content, Message.created_at)
+        .join(Conversation, Conversation.id == Message.conversation_id)
         .where(Conversation.user_id == current_user.id)
-        .order_by(Conversation.created_at.desc(), Conversation.id.desc())
+        .distinct(Message.conversation_id)
+        .order_by(Message.conversation_id, Message.created_at.desc(), Message.id.desc())
+        .subquery()
+    )
+    updated_at = func.coalesce(latest.c.created_at, Conversation.created_at)
+    rows = db.execute(
+        select(Conversation, latest.c.content, updated_at.label("updated_at"))
+        .outerjoin(latest, latest.c.conversation_id == Conversation.id)
+        .where(Conversation.user_id == current_user.id)
+        # id breaks ties when two rows have the same time
+        .order_by(updated_at.desc(), Conversation.id.desc())
+        .limit(limit)
     ).all()
+    return [
+        ConversationListItem(
+            id=c.id, title=c.title, created_at=c.created_at, updated_at=updated,
+            last_message_preview=shorten(content, PREVIEW_LENGTH) if content is not None else None,
+        )
+        for c, content, updated in rows
+    ]
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessageResponse])
@@ -71,6 +98,9 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     db.add(Message(conversation_id=conversation.id, role="user", content=body.content))
+    if not conversation.title:
+        # An untitled conversation is named after its first message
+        conversation.title = shorten(body.content, TITLE_LENGTH)
     db.commit()
 
     # The newest HISTORY_LIMIT messages (including the one just saved),

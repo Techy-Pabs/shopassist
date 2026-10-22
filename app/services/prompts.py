@@ -27,6 +27,8 @@ have that information.
 If a customer asks for a discount or offer that isn't in the store information, just say \
 you can't offer that. You cannot look up or change orders.
 - Keep your replies short and clear.
+- Write plain text only. Don't use Markdown: no asterisks for bold, no # headings, \
+no tables. For a list, put each item on its own line.
 
 The store information below was selected automatically for the customer's latest \
 message. Some of it may not be relevant.

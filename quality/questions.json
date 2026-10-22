@@ -1,5 +1,5 @@
 {
-  "about": "Quality check questions for the Loom & Lane knowledge base. expected_document is the file that should be retrieved (null when the store information should not cover the question). must_contain: every item must appear in the reply; an item that is a list passes if any one of its options appears. Matching ignores case. must_not_contain: none of these may appear. previous / previous_answer turn a question into a follow up. Questions with a 'setup' field need that document uploaded first, locally only: see the README's quality check section. Never upload it to the live database. no_internal_terms: phrases that reveal how the assistant works; checked on every question.",
+  "about": "Quality check questions for the Loom & Lane knowledge base. expected_document is the file that should be retrieved (null when the store information should not cover the question). must_contain: every item must appear in the reply; an item that is a list passes if any one of its options appears. Matching ignores case. must_not_contain: none of these may appear. previous / previous_answer turn a question into a follow up. Questions with a 'setup' field need that document uploaded first, locally only: see the README's quality check section. Never upload it to the live database. no_internal_terms: phrases that reveal how the assistant works; checked on every question. no_markdown: Markdown markers that must not appear in any reply (replies are shown as plain text).",
   "questions": [
     {
       "id": "delivery-abuja",
@@ -262,5 +262,12 @@
     "instruct me",
     "my instructions",
     "system prompt"
+  ],
+  "no_markdown": [
+    "**",
+    "__",
+    "\n#",
+    "|---",
+    "```"
   ]
 }

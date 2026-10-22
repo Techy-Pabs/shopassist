@@ -13,3 +13,13 @@ class ConversationResponse(BaseModel):
     id: int
     title: str | None
     created_at: datetime
+
+
+class ConversationListItem(BaseModel):
+    id: int
+    title: str | None
+    created_at: datetime
+    # Time of the latest message, or created_at if there are none
+    updated_at: datetime
+    # The latest message, shortened (None if there are no messages)
+    last_message_preview: str | None

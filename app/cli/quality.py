@@ -39,7 +39,9 @@ def load_questions(path: Path) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     # Phrases that reveal how the assistant works are banned in every reply
     for q in data["questions"]:
-        q["must_not_contain"] = q.get("must_not_contain", []) + data.get("no_internal_terms", [])
+        q["must_not_contain"] = (
+            q.get("must_not_contain", []) + data.get("no_internal_terms", []) + data.get("no_markdown", [])
+        )
     return data["questions"]
 
 

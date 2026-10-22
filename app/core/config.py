@@ -52,6 +52,21 @@ class Settings(BaseSettings):
     # 64 = one embedding batch, so every upload costs exactly one request
     upload_max_chunks: int = 64
 
+    # Browser origins allowed to call the API (comma separated), e.g. the
+    # Vercel frontend. Never "*".
+    allowed_origins: str = "http://localhost:5173"
+
+    @field_validator("allowed_origins")
+    @classmethod
+    def no_wildcard_origin(cls, value: str) -> str:
+        if "*" in value:
+            raise ValueError('ALLOWED_ORIGINS must list exact origins; "*" is not allowed')
+        return value
+
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.allowed_origins.split(",") if o.strip()]
+
     @property
     def ai_models(self) -> list[str]:
         """AI_MODEL first, then each fallback, without repeats."""

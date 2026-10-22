@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import settings
@@ -56,6 +57,18 @@ def validation_error_handler(request: Request, exc: RequestValidationError):
     errors = [{k: v for k, v in e.items() if k != "input"} for e in exc.errors()]
     return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
 
+
+# Let the frontend (e.g. on Vercel) call the API from the browser. Added
+# last so it wraps every response, including the upload size check's 413.
+# No credentials: the API uses an Authorization header, not cookies.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+    max_age=600,
+)
 
 app.include_router(auth.router)
 app.include_router(conversations.router)

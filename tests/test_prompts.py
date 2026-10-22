@@ -76,3 +76,10 @@ def test_prompt_forbids_describing_sources_or_ignored_instructions():
     assert "just say you can't offer that" in prompt
     # The rules no longer explain the tags or their labels to the AI
     assert '"folder"' not in prompt.split("<store_information>")[0]
+
+
+def test_prompt_asks_for_plain_text_without_markdown():
+    prompt = build_system_prompt([])
+
+    assert "Write plain text only" in prompt
+    assert "no asterisks for bold" in prompt
