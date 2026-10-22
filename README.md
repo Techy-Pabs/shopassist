@@ -2,13 +2,15 @@
 
 ShopAssist is the backend for an online store's customer support chatbot. Customers create an account, log in, open a conversation and ask questions about orders, shipping, returns, payments and products. An AI assistant replies using the store's own information (shipping, returns, payments, sizing and so on), and every conversation is saved in PostgreSQL. It is built for small online stores that want an AI support assistant they can run themselves. The engine is store agnostic: all store knowledge lives in Markdown files, so serving a different store means swapping those files and one setting. The AI provider can also be swapped without touching the rest of the code.
 
-This repository covers the first four milestones: a working, tested REST API (Milestone 1), a knowledge base that grounds the assistant's answers in the store's information using retrieval augmented generation, or RAG (Milestone 2), an admin role with admin only endpoints for the store's staff (Milestone 3), and uploading PDF, Word, text and Markdown documents into the knowledge base without redeploying (Milestone 4). It runs locally with Docker Compose and is deployed on Render. The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
+This repository covers the first five milestones: a working, tested REST API (Milestone 1), a knowledge base that grounds the assistant's answers in the store's information using retrieval augmented generation, or RAG (Milestone 2), an admin role with admin only endpoints for the store's staff (Milestone 3), uploading PDF, Word, text and Markdown documents into the knowledge base without redeploying (Milestone 4), and a chat website for customers (Milestone 5). It runs locally with Docker Compose; the API is deployed on Render and the website on Vercel. The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
 
-**Live demo:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs)
+**Live demo:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app), the Loom & Lane storefront with the chat widget. Click **Ask Loom & Lane**, create an account and ask a question.
+
+**API:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs), the interactive API documentation.
 
 The demo runs on free hosting that goes to sleep after 15 minutes without traffic, so the first request can take about a minute while it wakes up. AI replies come from free models with a shared daily limit. Each customer message uses two free requests (one to search the knowledge base, one for the reply), so the demo handles roughly 25 messages a day across all visitors, and the assistant may sometimes answer with a `502` "unavailable" message.
 
-To try it, register with **POST /auth/register**, log in with **POST /auth/login** and copy the `access_token`, then click **Authorize** and paste the token. Create a conversation with **POST /conversations** and send a message to it with **POST /conversations/{conversation_id}/messages**. Questions to try: "How long does delivery to Abuja take?", "Can I return earrings?", or "Can I pay on delivery for a ₦200,000 order?".
+To try the API directly, register with **POST /auth/register**, log in with **POST /auth/login** and copy the `access_token`, then click **Authorize** and paste the token. Create a conversation with **POST /conversations** and send a message to it with **POST /conversations/{conversation_id}/messages**. Questions to try: "How long does delivery to Abuja take?", "Can I return earrings?", or "Can I pay on delivery for a ₦200,000 order?".
 
 ## Features
 
@@ -39,7 +41,7 @@ Only the checked items are done. The others are planned and are **not** built ye
 - [x] **Milestone 2, knowledge base:** answer questions from the store's own policies and information (see [Knowledge base](#knowledge-base))
 - [x] **Milestone 3, admin role:** customer and admin roles, and read only admin endpoints (see [Admins](#admins))
 - [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base through the API, instead of editing files (see [Uploading documents](#uploading-documents))
-- [ ] **Milestone 5, chat interface:** a web frontend for customers. In progress: built in `web/` (see [Chat frontend](#chat-frontend)), not deployed yet
+- [x] **Milestone 5, chat interface:** a chat website for customers, live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app) (see [Chat frontend](#chat-frontend))
 - [ ] **Milestone 6, admin dashboard:** a web interface for store staff to review conversations and the knowledge base
 
 ## Tech stack
@@ -60,7 +62,7 @@ Only the checked items are done. The others are planned and are **not** built ye
 
 ```mermaid
 flowchart LR
-    Client["Client<br/>(Swagger UI, curl, future chat UI)"]
+    Client["Client<br/>(chat website, Swagger UI, curl)"]
     API["FastAPI app<br/>auth, conversations, messages"]
     DB[("PostgreSQL 16 + pgvector<br/>users, conversations, messages,<br/>documents, chunks")]
     AILayer["AI provider layer<br/>app/services/ai.py"]
@@ -328,9 +330,12 @@ When requests are blocked, signing in shows "We couldn't reach the assistant" (o
 Other commands, run in `web/`:
 
 ```bash
-npm run build     # production files in web/dist
-npm run preview   # serve the production build locally
+# production files in web/dist, for the live API
+VITE_API_URL=https://shopassist-022b.onrender.com npm run build
+npm run preview   # serve that build locally, with the same security headers as Vercel
 ```
+
+A production build needs `VITE_API_URL` set to an `https` address that is allowed by `connect-src` in `web/vercel.json`; otherwise it stops with a message saying what to fix. The address on the command line overrides the `localhost` one in `.env.local`. From `localhost:4173` the preview can't actually reach the live API (CORS only allows the deployed site), so signing in there shows "We couldn't reach the assistant".
 
 Chatting uses the free AI quota exactly as it does in Swagger UI: two requests per message.
 
@@ -522,7 +527,7 @@ Before changing anything, step 3 prints the database it is connected to, such as
 
 ## Deployment
 
-ShopAssist is set up to run on [Render](https://render.com) (the API, as a Docker web service) with [Neon](https://neon.tech) (the PostgreSQL database). Both have free tiers. Docker Compose is only used for local development; in production the API runs on its own and connects to Neon over the internet.
+ShopAssist is set up to run on [Render](https://render.com) (the API, as a Docker web service) with [Neon](https://neon.tech) (the PostgreSQL database), and the chat website on [Vercel](https://vercel.com) (see [Deploying the frontend](#deploying-the-frontend)). All three have free tiers. Docker Compose is only used for local development; in production the API runs on its own and connects to Neon over the internet.
 
 ### How the production container starts
 
@@ -577,7 +582,7 @@ The tables are created on the first start, when the container runs the migration
 | `RAG_TOP_K` | No | Defaults to `4` |
 | `RAG_MIN_SIMILARITY` | No | Defaults to `0.30` |
 | `RAG_ALWAYS_INCLUDE` | No | Defaults to `contact` |
-| `ALLOWED_ORIGINS` | For the frontend | The frontend's address, for example `https://your-app.vercel.app`. Never `*`. |
+| `ALLOWED_ORIGINS` | For the frontend | The frontend's exact address, `https://shopassist-five.vercel.app` for the demo. See [Deploying the frontend](#deploying-the-frontend). Never `*`. |
 | `UPLOAD_MAX_FILE_BYTES`, `UPLOAD_MAX_PDF_PAGES`, `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES`, `UPLOAD_MAX_CHARS`, `UPLOAD_MAX_CHUNKS` | No | Upload limits; the defaults are 5 MB, 200, 20 MB, 60,000 and 64 |
 
 Not needed in production:
@@ -590,6 +595,26 @@ Not needed in production:
 - **Idle database.** Neon's free tier also pauses the database when it's idle and resumes it on the next query, which adds a short delay. Connections that Neon closed while idle are detected and replaced automatically (SQLAlchemy's `pool_pre_ping`), so they don't cause errors.
 
 The live instance is at [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs).
+
+### Deploying the frontend
+
+The chat website in `web/` is a static site, hosted on Vercel's free tier.
+
+1. In Vercel, choose **Add New**, then **Project**, and import the GitHub repository.
+2. Set **Root Directory** to `web`. Vercel then finds the Vite project and uses `npm run build`, with the output in `dist`.
+3. Add the environment variable `VITE_API_URL` = `https://shopassist-022b.onrender.com` (the API's address, `https`, no trailing slash), then deploy.
+4. On Render, set `ALLOWED_ORIGINS` to the website's address and let the API restart.
+
+`VITE_API_URL` is built into the JavaScript, so it is public (never put a secret in it), and changing it needs a new deploy. If it is missing, not `https`, or not allowed by the security headers, the build stops with a message saying what to fix, instead of producing a site that calls the wrong address.
+
+**`ALLOWED_ORIGINS` must be the exact Vercel address,** written the way the browser sends it: `https://shopassist-five.vercel.app`, with `https://`, no trailing slash and no path. The browser compares it letter for letter, so `http://` instead of `https://`, a path such as `/chat`, or a different Vercel address blocks every request from the site. (The API removes a trailing slash if one is left in, as a safety net, but don't rely on it.) Never use `*` (the setting rejects it): that would let any website call the API from its visitors' browsers. Vercel's preview deployments have their own addresses and are deliberately not allowed, so only the production site can chat. To check the setting, ask the API what it allows for the site's address; the answer should repeat it in `access-control-allow-origin`:
+
+```bash
+curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/login \
+    -H "Origin: https://shopassist-five.vercel.app" -H "Access-Control-Request-Method: POST" | grep -i access-control-allow-origin
+```
+
+**Security headers.** `web/vercel.json` makes Vercel send a Content Security Policy and other security headers with every page. The policy lets the page load its own scripts and styles and the Google Fonts it uses, and talk only to the API. If the API ever moves, update both `VITE_API_URL` and `connect-src` in `web/vercel.json`.
 
 ## API endpoints
 
