@@ -6,19 +6,19 @@ the approved mockups and the Loom & Lane design system, deployed on Vercel
 and calling the live API on Render.
 
 ## Sources of truth
-- design/mockups/*.dc.html: the eight approved screens. Match layout,
+- web/design/mockups/*.dc.html: the eight approved screens. Match layout,
   spacing, colours, type and copy exactly.
-- design/tokens.json: the Loom & Lane design system tokens. Every colour,
+- web/design/tokens.json: the Loom & Lane design system tokens. Every colour,
   font, spacing, size and radius in the frontend comes from these; no other
   values. Version 2 adds the values the mockups use that version 1 lacked,
   each marked "extra": true (approved in Milestone 5). The version 1
   entries are unchanged.
-- design/README.md: the brand rules (voice, folded tag bubbles, adire band,
+- web/design/README.md: the brand rules (voice, folded tag bubbles, adire band,
   stitched rule, borders not shadows, focus ring).
 
 ## Stack
 React with Vite, JavaScript (no TypeScript), Tailwind CSS configured from
-design/tokens.json, Google Fonts (Fraunces, Manrope). Vitest and React
+web/design/tokens.json, Google Fonts (Fraunces, Manrope). Vitest and React
 Testing Library for tests, with fetch mocked (no extra mocking library).
 Hosted on Vercel. Code lives in web/. Node 22 LTS, installed in WSL with
 nvm (there is no Node in WSL today, and Docker Hub downloads are
@@ -27,9 +27,9 @@ unreliable here, so a Node container is not relied on).
 ## web/ stays self-contained
 web/ communicates with the backend only through the HTTP API, never imports
 backend code, and has its own package.json, README section, tests and
-build, so it can be moved to its own repository later without changes. It
-reads design/tokens.json at build time; if web/ moves, a copy of the
-tokens moves with it.
+build, so it can be moved to its own repository later without changes.
+The design files (tokens, brand rules and mockups) live inside it, in
+web/design/, and nothing in web/ refers to a file outside web/.
 
 ## In scope
 - A minimal static Loom & Lane storefront page (header, hero, three product

@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 bg-surface-100 font-sans text-body text-ink;
+  }
+
+  /* Placeholder text is a hint, so ink-muted (replaces Tailwind's grey default) */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-ink-muted;
+    opacity: theme('opacity.100');
+  }
+
+  /* Links are clay and turn ink on hover, as in the mockups */
+  a {
+    @apply text-clay;
+  }
+  a:hover {
+    @apply text-ink;
+  }
+
+  /* Keyboard focus: a solid indigo ring with a gap, on every control */
+  :focus-visible {
+    @apply outline-ring outline-offset-ring outline-indigo;
+    outline-style: solid;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: theme('transitionDuration.0') !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: theme('transitionDuration.0') !important;
+    }
+  }
+}
+
+@layer components {
+  /* The adire band: indigo with a grid of indigo-tint dots, after adire
+     resist dyed cloth. Each dot fades out a quarter beyond its radius, and
+     the grid is offset by half a tile, as in the mockups. */
+  .adire {
+    background-color: theme('colors.indigo');
+    background-image: radial-gradient(
+      circle,
+      theme('colors.indigo-tint') theme('size.adire-dot'),
+      transparent calc(theme('size.adire-dot') * 1.25)
+    );
+    background-size: theme('size.adire-tile') theme('size.adire-tile');
+    background-position: calc(theme('size.adire-tile') / 2) calc(theme('size.adire-tile') / 2);
+  }
+}
