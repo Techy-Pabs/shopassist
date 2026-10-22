@@ -13,3 +13,17 @@ export const CloseIcon = () => (
     <path d="M6 6l12 12M18 6L6 18" />
   </Icon>
 )
+
+export const SendIcon = () => (
+  <Icon>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Icon>
+)
+
+// The alert icon is drawn in the danger colour by its parent
+export const AlertIcon = () => (
+  <Icon className="h-icon w-icon shrink-0">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v6M12 16.5v.5" />
+  </Icon>
+)

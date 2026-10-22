@@ -93,6 +93,14 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
     login: (email, password) => request('POST', '/auth/login', { auth: false, body: { email, password } }),
     register: (email, password) => request('POST', '/auth/register', { auth: false, body: { email, password } }),
     me: () => request('GET', '/auth/me'),
+    // The conversation is created lazily, on the customer's first message
+    createConversation: () => request('POST', '/conversations', { body: {} }),
+    listMessages: (conversationId) => request('GET', `/conversations/${conversationId}/messages`),
+    sendMessage: (conversationId, content) =>
+      request('POST', `/conversations/${conversationId}/messages`, { body: { content } }),
+    // After a failed reply: answer the latest question again without saving
+    // it twice. 409 means there was no unanswered question to retry.
+    retryReply: (conversationId) => request('POST', `/conversations/${conversationId}/retry`),
   }
 }
 

@@ -114,8 +114,23 @@ export function buildTheme(tokens) {
         from: { opacity: '0', transform: `translateY(${spacing['6']})` },
         to: { opacity: '1', transform: 'translateY(0)' },
       },
+      // The typing dots brighten in turn: each is bright for a third of the cycle
+      ...Object.fromEntries(
+        [1, 2, 3].map((dot) => {
+          const dim = byName(tokens.opacity.tokens)['dot-fade-3']
+          // Bright in the middle of its third: 17%, 50%, 83%
+          const brightAt = `${Math.round(((dot - 0.5) / 3) * 100)}%`
+          return [`typing-${dot}`, { '0%, 100%': { opacity: dim }, [brightAt]: { opacity: '1' } }]
+        }),
+      ),
     },
-    animation: { none: 'none', 'panel-in': `panel-in ${byName(tokens.motion.tokens)['panel-slide']} ease-out` },
+    animation: {
+      none: 'none',
+      'panel-in': `panel-in ${byName(tokens.motion.tokens)['panel-slide']} ease-out`,
+      ...Object.fromEntries(
+        [1, 2, 3].map((dot) => [`typing-${dot}`, `typing-${dot} ${byName(tokens.motion.tokens)['typing-cycle']} ease-in-out infinite`]),
+      ),
+    },
     // A custom key so CSS can reach the sizes with theme('size.adire-dot')
     size,
   }

@@ -512,6 +512,7 @@ The live instance is at [shopassist-022b.onrender.com/docs](https://shopassist-0
 | GET | `/conversations` | Yes | Your conversations, most recent activity first, with `updated_at` and `last_message_preview`. `limit` (default 50, at most 100). A conversation is named after its first message. | `200`, `401`, `422` |
 | GET | `/conversations/{conversation_id}/messages` | Yes | Messages in a conversation, oldest first | `200`, `401`, `404` |
 | POST | `/conversations/{conversation_id}/messages` | Yes | Send a message and get the AI's reply. Body: `content` (1 to 2000 characters) | `201` reply, `401`, `404`, `422`, `502` AI unavailable |
+| POST | `/conversations/{conversation_id}/retry` | Yes | After a failed reply (`502`), try again to answer the latest question, without saving it twice. Only the reply is saved. | `201` reply, `401`, `404`, `409` nothing to retry, `502` |
 | GET, POST, DELETE | `/admin/...` | Admin | The admin endpoints, see [Admins](#admins) | `200`, `201`, `204`, `401`, `403`, `404`, `409`, `413`, `415`, `422`, `502` |
 
 "Auth: Yes" means the request needs an `Authorization: Bearer <token>` header; "Admin" means that token must belong to an admin. User responses contain only `id`, `email`, `role` and `created_at`.

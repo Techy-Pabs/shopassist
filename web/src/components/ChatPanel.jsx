@@ -2,26 +2,11 @@ import { useEffect, useId, useRef } from 'react'
 
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { useSession } from '../session/SessionContext.jsx'
+import ChatView from './ChatView.jsx'
 import PanelHeader from './PanelHeader.jsx'
 import SignInForm from './SignInForm.jsx'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-function SignedIn() {
-  const { signOut } = useSession()
-  return (
-    <div className="flex flex-1 flex-col items-start gap-4 px-6 py-8">
-      <p className="m-0 text-body text-ink">Signed in. Chat arrives in Slice 4.</p>
-      <button
-        type="button"
-        onClick={signOut}
-        className="h-control cursor-pointer rounded-sm border border-line-strong bg-transparent px-4.5 font-sans text-body-small font-semibold text-ink"
-      >
-        Sign out
-      </button>
-    </div>
-  )
-}
 
 // The chat panel: full screen and modal below the mobile breakpoint, a
 // floating non-modal panel above it. Escape closes it.
@@ -30,12 +15,13 @@ export default function ChatPanel({ onClose }) {
   const isMobile = useIsMobile()
   const titleId = useId()
   const panelRef = useRef(null)
-  const emailRef = useRef(null)
+  // The first field to focus: the email (signed out) or the question input
+  const focusRef = useRef(null)
 
   // Move focus into the panel when it opens: the email field when signed
-  // out, otherwise the panel itself
+  // out, the question input when signed in, otherwise the panel itself
   useEffect(() => {
-    ;(emailRef.current ?? panelRef.current)?.focus()
+    ;(focusRef.current ?? panelRef.current)?.focus()
   }, [isSignedIn])
 
   // A stored token may have expired since it was saved: check it once when
@@ -87,7 +73,7 @@ export default function ChatPanel({ onClose }) {
         subtitle={isSignedIn ? 'AI assistant, replies in seconds' : 'AI assistant'}
         onClose={onClose}
       />
-      {isSignedIn ? <SignedIn /> : <SignInForm emailRef={emailRef} />}
+      {isSignedIn ? <ChatView inputRef={focusRef} /> : <SignInForm emailRef={focusRef} />}
     </section>
   )
 }

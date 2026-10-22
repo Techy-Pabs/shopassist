@@ -102,9 +102,42 @@ def send_message(
         # An untitled conversation is named after its first message
         conversation.title = shorten(body.content, TITLE_LENGTH)
     db.commit()
+    return reply_to_latest_question(conversation, db)
 
-    # The newest HISTORY_LIMIT messages (including the one just saved),
-    # put back into oldest-first order for the AI
+
+@router.post(
+    "/{conversation_id}/retry",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "The latest message already has a reply, or there is none"}},
+)
+def retry_reply(
+    conversation: Conversation = Depends(get_user_conversation),
+    db: Session = Depends(get_db),
+):
+    """Try again to answer the latest customer message, after a reply failed.
+
+    Only the assistant's reply is saved, so the question isn't stored twice.
+    """
+    latest = db.scalar(
+        select(Message)
+        .where(Message.conversation_id == conversation.id)
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+    )
+    if latest is None or latest.role != "user":
+        raise HTTPException(status.HTTP_409_CONFLICT, "There is no unanswered question to retry.")
+    return reply_to_latest_question(conversation, db)
+
+
+def reply_to_latest_question(conversation: Conversation, db: Session) -> Message:
+    """Generate and save the assistant's reply to the conversation so far.
+
+    Shared by sending and retrying, so both use the same history, store
+    information, prompt and failure handling. Raises 502 (saving nothing)
+    if the AI can't answer.
+    """
+    # The newest HISTORY_LIMIT messages, put back into oldest-first order
     recent = db.scalars(
         select(Message)
         .where(Message.conversation_id == conversation.id)

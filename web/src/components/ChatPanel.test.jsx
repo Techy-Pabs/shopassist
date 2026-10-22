@@ -124,7 +124,7 @@ describe('signing in', () => {
     await fillIn(user, 'ada@example.com', 'password123')
     await user.click(screen.getByRole('button', { name: 'Sign in and start chatting' }))
 
-    expect(await screen.findByText('Signed in. Chat arrives in Slice 4.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Hello, how can we help?' })).toBeInTheDocument()
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBe('token-123')
     expect(JSON.parse(callsTo(fetch, 'POST', '/auth/login')[0][1].body)).toEqual({ email: 'ada@example.com', password: 'password123' })
     expect(within(screen.getByRole('dialog')).getByText('AI assistant, replies in seconds')).toBeInTheDocument()
@@ -167,18 +167,6 @@ describe('signing in', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't reach the assistant")
   })
-
-  it('signing out forgets the token and shows the form again', async () => {
-    window.sessionStorage.setItem(TOKEN_KEY, 'token-123')
-    const { user } = setup({ 'GET /auth/me': { status: 200, body: { id: 1, email: 'ada@example.com' } } })
-    await openPanel(user)
-
-    await user.click(screen.getByRole('button', { name: 'Sign out' }))
-
-    expect(screen.getByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
-    expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
-    expect(screen.queryByText(/Your session ended/)).not.toBeInTheDocument()
-  })
 })
 
 describe('a session that has ended', () => {
@@ -203,7 +191,7 @@ describe('a session that has ended', () => {
     await fillIn(user, 'ada@example.com', 'password123')
     await user.click(screen.getByRole('button', { name: 'Sign in and start chatting' }))
 
-    expect(await screen.findByText('Signed in. Chat arrives in Slice 4.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Hello, how can we help?' })).toBeInTheDocument()
     expect(screen.queryByText(/Your session ended/)).not.toBeInTheDocument()
   })
 })
@@ -220,7 +208,7 @@ describe('creating an account', () => {
     await fillIn(user, 'new@example.com', 'password123')
     await user.click(screen.getByRole('button', { name: 'Create account and start chatting' }))
 
-    expect(await screen.findByText('Signed in. Chat arrives in Slice 4.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Hello, how can we help?' })).toBeInTheDocument()
     expect(callsTo(fetch, 'POST', '/auth/register')).toHaveLength(1)
     expect(callsTo(fetch, 'POST', '/auth/login')).toHaveLength(1)
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBe('token-123')

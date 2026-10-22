@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
 import { API_URL, SESSION_ENDED_MESSAGE, createApiClient } from '../api/client.js'
+import { saveConversationId } from '../lib/conversationStore.js'
 
 // The token lives in sessionStorage, so it's forgotten when the tab closes
 const TOKEN_KEY = 'loomlane.token'
@@ -28,6 +29,9 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
   const [token, setToken] = useState(readStoredToken)
   // Shown on the sign in screen after a session ends
   const [notice, setNotice] = useState(null)
+  // A message that couldn't be sent because the session ended: it goes back
+  // into the input after signing in again
+  const [draft, setDraft] = useState('')
   // The client reads the token through a ref, so it never sees a stale one
   const tokenRef = useRef(token)
   tokenRef.current = token
@@ -58,8 +62,17 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
   }, [])
 
   const value = useMemo(
-    () => ({ api, token, isSignedIn: Boolean(token), notice, signIn, signOut: () => signOut(null) }),
-    [api, token, notice, signIn, signOut],
+    () => ({
+      api, token, isSignedIn: Boolean(token), notice, signIn, draft, setDraft,
+      // Signing out on purpose also forgets this tab's conversation and any
+      // unsent text, so the next person to sign in starts fresh
+      signOut: () => {
+        saveConversationId(null)
+        setDraft('')
+        signOut(null)
+      },
+    }),
+    [api, token, notice, signIn, signOut, draft],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
