@@ -7,7 +7,7 @@ const SEGMENTS = 5
 export default function WakingScreen({ elapsed, total }) {
   const filled = Math.min(SEGMENTS, Math.floor((elapsed / total) * SEGMENTS) + 1)
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
         <div aria-hidden="true" className="flex h-waking-ring w-waking-ring items-center justify-center rounded-pill bg-indigo">
           <div className="adire h-waking-ring-inner w-waking-ring-inner rounded-pill" />

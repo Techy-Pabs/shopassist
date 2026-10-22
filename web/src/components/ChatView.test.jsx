@@ -314,6 +314,14 @@ describe('scrolling', () => {
     Element.prototype.scrollIntoView = scrollIntoView
   })
 
+  it('does not scroll the welcome screen, which is read from the top', async () => {
+    const { user } = setup()
+    await openChat(user)
+    await screen.findByRole('heading', { name: 'Hello, how can we help?' })
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
   function scrolledUp(element) {
     // Far from the bottom: 2000 tall, showing 400, scrolled to 100
     Object.defineProperties(element, {

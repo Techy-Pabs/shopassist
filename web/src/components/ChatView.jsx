@@ -131,13 +131,15 @@ export default function ChatView({ inputRef }) {
     const el = scrollRef.current
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_TO_BOTTOM_WITHIN
   }
+  const showWelcome = !loading && messages.length === 0 && wake.state !== 'unavailable'
+  // The welcome screen is read from the top: only a conversation follows
+  // its newest message
   useLayoutEffect(() => {
-    if (stickToBottom.current) endRef.current?.scrollIntoView?.({ block: 'end' })
-  }, [messages, waiting, failed])
+    if (!showWelcome && stickToBottom.current) endRef.current?.scrollIntoView?.({ block: 'end' })
+  }, [messages, waiting, failed, showWelcome])
 
   if (wake.state === 'waking') return <WakingScreen elapsed={wake.elapsed} total={GIVE_UP_AFTER} />
 
-  const showWelcome = !loading && messages.length === 0 && wake.state !== 'unavailable'
   return (
     <>
       <div ref={scrollRef} onScroll={onScroll} className="flex min-h-0 flex-1 flex-col overflow-y-auto">

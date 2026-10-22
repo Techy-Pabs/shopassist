@@ -1,13 +1,17 @@
 import { store } from '../config/store.js'
-import { CloseIcon } from './Icons.jsx'
+import HeaderButton from './HeaderButton.jsx'
+import { BackIcon, CloseIcon, HistoryIcon } from './Icons.jsx'
 import Monogram from './Monogram.jsx'
 
-// The indigo header, then the adire band (the one band on each screen)
-export default function PanelHeader({ titleId, subtitle, onClose, children }) {
+// The adire band under every header: the one band on each screen
+const Band = () => <div aria-hidden="true" className="adire h-adire-tile shrink-0" />
+
+// shrink-0 on the headers: they never give up space, so they and their
+// buttons stay at the top however short the window; the area below scrolls.
+
+export default function PanelHeader({ titleId, subtitle, onClose, onHistory, historyRef }) {
   return (
     <>
-      {/* shrink-0: the header never gives up space, so the close button stays
-          reachable however short the window is; the content below scrolls */}
       <div className="flex shrink-0 items-center gap-3 bg-indigo py-3 pl-4 pr-2 text-surface-100">
         <Monogram variant="header" />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -16,17 +20,36 @@ export default function PanelHeader({ titleId, subtitle, onClose, children }) {
           </h2>
           <span className="text-caption font-normal text-indigo-tint">{subtitle}</span>
         </div>
-        {children}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close chat"
-          className="flex h-control w-control cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-surface-100"
-        >
+        {onHistory && (
+          <HeaderButton label="Conversation history" onClick={onHistory} buttonRef={historyRef}>
+            <HistoryIcon />
+          </HeaderButton>
+        )}
+        <HeaderButton label="Close chat" onClick={onClose}>
           <CloseIcon />
-        </button>
+        </HeaderButton>
       </div>
-      <div aria-hidden="true" className="adire h-adire-tile shrink-0" />
+      <Band />
+    </>
+  )
+}
+
+// The history header: back to the chat, the title, close
+export function HistoryHeader({ titleId, onBack, onClose, backRef }) {
+  return (
+    <>
+      <div className="flex shrink-0 items-center gap-1 bg-indigo px-2 py-3 text-surface-100">
+        <HeaderButton label="Back to chat" onClick={onBack} buttonRef={backRef}>
+          <BackIcon />
+        </HeaderButton>
+        <h2 id={titleId} className="m-0 flex-1 font-serif text-title-chat">
+          Your conversations
+        </h2>
+        <HeaderButton label="Close chat" onClick={onClose}>
+          <CloseIcon />
+        </HeaderButton>
+      </div>
+      <Band />
     </>
   )
 }

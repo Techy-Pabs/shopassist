@@ -40,6 +40,25 @@
 }
 
 @layer components {
+  /* The chat panel's box. It is never scrolled itself: only the area below
+     its header scrolls. "clip" (unlike "hidden") also stops the browser from
+     scrolling it when focusing a field or showing a new message; "hidden"
+     is the fallback for browsers without "clip". */
+  .panel-box {
+    overflow: hidden;
+    overflow: clip;
+  }
+
+  /* On desktop the floating panel always fits the window, with space-8
+     above and below. 100vh first, for browsers without dvh; 100dvh (the
+     visible height, ignoring browser toolbars) wins where supported. */
+  @media (min-width: theme('screens.sm')) {
+    .panel-box {
+      max-height: calc(100vh - theme('spacing.8') * 2);
+      max-height: theme('maxHeight.panel-fit');
+    }
+  }
+
   /* The adire band: indigo with a grid of indigo-tint dots, after adire
      resist dyed cloth. Each dot fades out a quarter beyond its radius, and
      the grid is offset by half a tile, as in the mockups. */

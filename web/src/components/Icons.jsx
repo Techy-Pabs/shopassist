@@ -27,3 +27,22 @@ export const AlertIcon = () => (
     <path d="M12 7v6M12 16.5v.5" />
   </Icon>
 )
+
+export const HistoryIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+)
+
+export const BackIcon = () => (
+  <Icon>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </Icon>
+)
+
+export const PlusIcon = () => (
+  <Icon className="h-icon-sm w-icon-sm">
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+)

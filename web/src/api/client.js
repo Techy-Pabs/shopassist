@@ -93,6 +93,8 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
     login: (email, password) => request('POST', '/auth/login', { auth: false, body: { email, password } }),
     register: (email, password) => request('POST', '/auth/register', { auth: false, body: { email, password } }),
     me: () => request('GET', '/auth/me'),
+    // The customer's conversations, most recent activity first
+    listConversations: ({ limit = 50 } = {}) => request('GET', `/conversations?limit=${limit}`),
     // The conversation is created lazily, on the customer's first message
     createConversation: () => request('POST', '/conversations', { body: {} }),
     listMessages: (conversationId) => request('GET', `/conversations/${conversationId}/messages`),

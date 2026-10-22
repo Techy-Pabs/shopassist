@@ -66,20 +66,15 @@ describe('opening and closing the panel', () => {
     expect(launcher()).toHaveFocus()
   })
 
-  it('fits short windows on desktop, keeping the header and close button reachable', async () => {
+  it('fits short windows on desktop and is never scrolled itself', async () => {
     const { user } = setup()
 
     const panel = await openPanel(user)
 
-    // jsdom has no layout, so check the rules that guarantee it: the panel's
-    // height is capped to the window, the header never shrinks, and the
-    // content area is the part that shrinks and scrolls
-    expect(panel).toHaveClass('sm:h-panel-height', 'sm:max-h-panel-fit', 'overflow-hidden', 'flex-col')
-    const header = within(panel).getByRole('heading', { name: 'Loom & Lane' }).closest('div.bg-indigo')
-    expect(header).toHaveClass('shrink-0')
-    expect(within(header).getByRole('button', { name: 'Close chat' })).toBeInTheDocument()
-    const content = within(panel).getByRole('heading', { name: 'Sign in to chat' }).closest('form')
-    expect(content).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
+    // panel-box (index.css): capped to the window height, and clipped so the
+    // browser can't scroll the panel box when focusing or scrolling to content
+    expect(panel).toHaveClass('panel-box', 'flex-col', 'sm:h-panel-height')
+    expect(panel).not.toHaveClass('overflow-hidden', 'overflow-y-auto')
   })
 
   it('is a non-modal dialog on desktop', async () => {

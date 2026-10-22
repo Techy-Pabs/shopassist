@@ -29,3 +29,8 @@ export function formatDay(date, now = new Date()) {
 export function formatDivider(date, now = new Date()) {
   return `${formatDay(date, now)}, ${formatTime(date)}`
 }
+
+// History groups: "This week" is today and the six days before it
+export function isThisWeek(date, now = new Date()) {
+  return Math.round((startOfDay(now) - startOfDay(date)) / DAY_MS) < 7
+}
