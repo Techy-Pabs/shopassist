@@ -1,4 +1,4 @@
-import { buildTheme, loadTokens } from './tokens.theme.js'
+import { buildTheme, loadTokens } from './tokens.theme.cjs'
 
 const tokens = loadTokens()
 const theme = buildTheme(tokens)
@@ -39,5 +39,16 @@ describe('the Tailwind theme comes from design/tokens.json', () => {
     expect(theme.screens).toEqual({ sm: '640px' })
     // The desktop panel fits any window height, with space-8 above and below
     expect(theme.maxHeight['panel-fit']).toBe('calc(100dvh - 32px * 2)')
+  })
+})
+
+describe('the homepage additions', () => {
+  it('names each border width after its token', () => {
+    expect(theme.borderWidth).toEqual({ 0: '0', DEFAULT: '1px', frame: '8px', 'frame-sm': '6px' })
+  })
+
+  it('builds the auto-fit grids from the grid size tokens, keeping the numbered columns', () => {
+    expect(theme.extend.gridTemplateColumns['fit-collection']).toBe('repeat(auto-fit, minmax(280px, 1fr))')
+    expect(theme.gridTemplateColumns).toBeUndefined() // not replaced, so grid-cols-2 still exists
   })
 })

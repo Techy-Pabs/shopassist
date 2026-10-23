@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { deferred, fakeFetch } from '../test/fakeApi.js'
+import { launcherButton } from '../test/launcher.js'
 
 const SCROLLER = '.overflow-y-auto'
 
@@ -29,7 +30,7 @@ async function openIn(view) {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   render(<App fetchImpl={fakeFetch(routes)} />)
-  await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+  await user.click(launcherButton())
   if (view === 'waking') act(() => vi.advanceTimersByTime(3_000))
   if (view === 'history') await user.click(await screen.findByRole('button', { name: 'Conversation history' }))
   const expected = {

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import App from '../App.jsx'
 import { callsTo, deferred, fakeFetch } from '../test/fakeApi.js'
 import { GREETING, SUGGESTIONS } from './WelcomeScreen.jsx'
+import { launcherButton } from '../test/launcher.js'
 
 const TOKEN_KEY = 'loomlane.token'
 const CONVERSATION_KEY = 'loomlane.conversationId'
@@ -24,7 +25,7 @@ function setup(routes = {}, { userOptions } = {}) {
 }
 
 async function openChat(user) {
-  await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+  await user.click(launcherButton())
   return screen.getByRole('dialog', { name: 'Loom & Lane' })
 }
 

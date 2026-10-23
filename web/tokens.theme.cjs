@@ -3,18 +3,16 @@
 // The theme REPLACES Tailwind's defaults (colours, spacing, sizes, type,
 // radius, shadows, durations), so a class like `bg-red-500` or `p-9` simply
 // doesn't exist: every value used in the interface comes from tokens.json.
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const here = dirname(fileURLToPath(import.meta.url))
+//
+// CommonJS, like tailwind.config.cjs: Tailwind reloads its config by
+// clearing Node's require cache, which ES modules ignore. Loading the tokens
+// with require also makes Tailwind watch tokens.json, so editing it updates
+// a running dev server.
 
 // The tokens live inside web/ (web/design/tokens.json), so web/ is
 // self-contained and can move to its own repository unchanged.
-export const TOKENS_PATH = resolve(here, 'design/tokens.json')
-
-export function loadTokens(path = TOKENS_PATH) {
-  return JSON.parse(readFileSync(path, 'utf-8'))
+function loadTokens() {
+  return require('./design/tokens.json')
 }
 
 const byName = (tokens, value = (t) => t.value) =>
@@ -29,7 +27,7 @@ const radiusKey = (name) => name.replace(/^radius-/, '')
 
 const fontStack = (family) => family.split(',').map((f) => f.trim())
 
-export function buildTheme(tokens) {
+function buildTheme(tokens) {
   const colors = byName(tokens.color.tokens, (t) => t.value.light)
 
   const fontFamily = Object.fromEntries(
@@ -69,7 +67,11 @@ export function buildTheme(tokens) {
   const keywords = { auto: 'auto', full: '100%', min: 'min-content', max: 'max-content', fit: 'fit-content' }
   const lengths = { ...spacing, ...size, ...keywords }
 
-  const borderWidth = { 0: '0', DEFAULT: byName(tokens.border.tokens).border }
+  // "border" is the default width (the `border` class); "border-frame" -> "frame"
+  const borderWidth = {
+    0: '0',
+    ...Object.fromEntries(tokens.border.tokens.map((t) => [t.name.replace(/^border-?/, '') || 'DEFAULT', t.value])),
+  }
   const focus = byName(tokens.focus.tokens)
   const breakpoint = size['breakpoint-mobile']
 
@@ -133,5 +135,19 @@ export function buildTheme(tokens) {
     },
     // A custom key so CSS can reach the sizes with theme('size.adire-dot')
     size,
+    // Added to Tailwind's numbered columns (grid-cols-2 stays): grids that fit
+    // as many columns as their minimum width allows, as in the homepage mockups
+    extend: {
+      gridTemplateColumns: Object.fromEntries(
+        ['service', 'collection', 'product', 'card', 'footer'].map((name) => {
+          const min = size[`grid-${name}`]
+          // A missing token would quietly give "minmax(undefined, 1fr)"
+          if (!min) throw new Error(`tokens.json has no size token grid-${name}`)
+          return [`fit-${name}`, `repeat(auto-fit, minmax(${min}, 1fr))`]
+        }),
+      ),
+    },
   }
 }
+
+module.exports = { buildTheme, loadTokens }

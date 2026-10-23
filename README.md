@@ -4,7 +4,7 @@ ShopAssist is the backend for an online store's customer support chatbot. Custom
 
 This repository covers the first five milestones: a working, tested REST API (Milestone 1), a knowledge base that grounds the assistant's answers in the store's information using retrieval augmented generation, or RAG (Milestone 2), an admin role with admin only endpoints for the store's staff (Milestone 3), uploading PDF, Word, text and Markdown documents into the knowledge base without redeploying (Milestone 4), and a chat website for customers (Milestone 5). It runs locally with Docker Compose; the API is deployed on Render and the website on Vercel. The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
 
-**Live demo:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app), the Loom & Lane storefront with the chat widget. Click **Ask Loom & Lane**, create an account and ask a question.
+**Live demo:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app), the Loom & Lane homepage with the chat widget. Click **Ask Loom & Lane**, create an account and ask a question.
 
 **API:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs), the interactive API documentation.
 
@@ -286,7 +286,7 @@ Test tools (`requirements-dev.txt`) are only installed in the test image, not in
 
 ## Chat frontend
 
-`web/` is the customer facing website: a small storefront for the demo store, Loom & Lane, with a chat widget in the corner. Customers sign in or create an account inside the widget, ask a question or tap a suggested one, read the assistant's replies, and reopen past conversations. On a phone the widget fills the screen; on a computer it floats over the page.
+`web/` is the customer facing website: the homepage of the demo store, Loom & Lane, with a chat widget in the corner. The homepage has no shop behind it, so every link scrolls to a section of the page, and its store facts (delivery, pickup, payment, sizes, returns) match the assistant's knowledge base. Customers sign in or create an account inside the widget, ask a question or tap a suggested one, read the assistant's replies, and reopen past conversations. On a phone the widget fills the screen; on a computer it floats over the page.
 
 It talks to the API only over HTTP and never imports backend code. It has its own `package.json`, tests and build, and nothing in `web/` refers to a file outside it, so it can move to its own repository unchanged.
 
@@ -347,26 +347,28 @@ npm test              # once
 npm run test:watch    # again on every change
 ```
 
-The 115 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. They cover:
+The 130 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. They cover:
 
 - signing in, creating an account, wrong passwords, the server's validation messages, and a `401` on any call returning to sign in
 - sending: the bubble, the typing indicator and the reply; the unavailable card and **Try again**; `422` messages; a reply containing `<b>` or `<script>` shown as literal text
 - suggestion chips, waking the API, following new messages, and the conversation history (groups, dates, loading, empty and error states, new conversation)
 - the panel: **Escape**, focus moving in and back to the launcher, focus kept inside the full screen panel on phones, and the header staying in place while only the area below it scrolls
-- accessibility: [axe](https://github.com/dequelabs/axe-core) checks of the storefront and every panel view at phone and desktop sizes, and animations only when the visitor hasn't asked for reduced motion
+- the homepage: no dead links, store facts matching the knowledge base, photos (two widths, alt text, lazy loading, credits), the mobile menu, and every **Ask Loom & Lane** button opening the chat
+- accessibility: [axe](https://github.com/dequelabs/axe-core) checks of the homepage (and its open mobile menu) and every panel view at phone and desktop sizes, and animations only when the visitor hasn't asked for reduced motion
 - the design system: no colour, pixel size or one-off Tailwind value outside the tokens
 
 ### Accessibility approach
 
-Accessibility is checked in three ways. The test suite runs axe on the storefront and every panel view, at phone and desktop sizes, so a regression fails the tests. The simulated browser can't measure colour contrast, so axe is also run in real Chrome, contrast included, on every screen at 1280x800 and 390x844 (no violations). And a keyboard only pass goes through the whole journey in real Chrome (open, sign in, a suggestion, send, history, back, sign out and **Escape**), checking at every stop that focus lands in the right place, shows the indigo focus ring and is on screen. Every control in the widget is a touch target of at least 44px (48px for the main controls on phones), except links inside a sentence. Animations run only when the visitor hasn't asked for reduced motion, and a test fails if one isn't guarded.
+Accessibility is checked in three ways. The test suite runs axe on the homepage and every panel view, at phone and desktop sizes, so a regression fails the tests. The simulated browser can't measure colour contrast, so axe is also run in real Chrome, contrast included, on every screen at 1280x800 and 390x844 (no violations). And a keyboard only pass goes through the whole journey in real Chrome (open, sign in, a suggestion, send, history, back, sign out and **Escape**), checking at every stop that focus lands in the right place, shows the indigo focus ring and is on screen. Every control in the widget is a touch target of at least 44px (48px for the main controls on phones), except links inside a sentence. Animations run only when the visitor hasn't asked for reduced motion, and a test fails if one isn't guarded.
 
 ### Design system and mockups
 
 - **Tokens.** `web/design/tokens.json` holds the Loom & Lane design tokens: colours, fonts, type sizes, spacing, sizes, radii and shadows. Version 2 adds values the mockups needed, each marked `"extra": true`.
-- **Tailwind from the tokens.** `web/tokens.theme.js` turns the tokens into Tailwind's theme and replaces Tailwind's defaults, so only token values exist. A test (`web/src/tokens-only.test.js`) fails if the code uses a colour, a pixel size or an arbitrary value like `w-[123px]` directly.
+- **Tailwind from the tokens.** `web/tokens.theme.cjs` turns the tokens into Tailwind's theme and replaces Tailwind's defaults, so only token values exist. A test (`web/src/tokens-only.test.js`) fails if the code uses a colour, a pixel size or an arbitrary value like `w-[123px]` directly.
 - **Brand rules.** `web/design/README.md`: the voice, the folded tag bubbles, the adire band, the stitched rule, borders instead of shadows, and the focus ring.
-- **Mockups.** `web/design/mockups/` holds the eight approved screens: the storefront, the desktop chat, and sign in, welcome, conversation, error, waking and history on a phone. With the development server running, open them at, for example, `http://localhost:5173/design/mockups/Main.dc.html`. The built screens are compared with them side by side at 1280x800 and 390x844 (by eye; automated pixel comparison isn't used).
+- **Mockups.** `web/design/mockups/` holds the approved screens: the homepage on desktop and phone (`Home-Desktop`, `Home-Mobile`), the earlier storefront, the desktop chat, and sign in, welcome, conversation, error, waking and history on a phone. With the development server running, open them at, for example, `http://localhost:5173/design/mockups/Main.dc.html`. The built screens are compared with them side by side at 1280x800 and 390x844 (by eye; automated pixel comparison isn't used).
 - **Fonts.** Fraunces and Manrope, from Google Fonts.
+- **Photos.** `web/public/images/`, from Unsplash under the Unsplash License, as WebP at 640 and 1280 pixels wide. `web/public/images/CREDITS.md` lists each photo, its photographer and its Unsplash page; the footer credits the photographers. Each photo sits on its mockup's cloth pattern, which shows while it loads.
 
 Where the built screens differ from the mockups on purpose: accounts have no names, so the welcome reads "Hello, how can we help?"; a conversation's title is the customer's first words; the WhatsApp number is shown as text until a real number is configured in `web/src/config/store.js`; and there is a **Sign out** link under the message box.
 

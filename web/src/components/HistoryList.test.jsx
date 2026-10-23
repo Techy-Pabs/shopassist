@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { callsTo, deferred, fakeFetch } from '../test/fakeApi.js'
+import { launcherButton } from '../test/launcher.js'
 
 const TOKEN_KEY = 'loomlane.token'
 const CONVERSATION_KEY = 'loomlane.conversationId'
@@ -35,7 +36,7 @@ function setup(routes = {}) {
 }
 
 async function openHistory(user) {
-  await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+  await user.click(launcherButton())
   await user.click(await screen.findByRole('button', { name: 'Conversation history' }))
 }
 
@@ -197,7 +198,7 @@ describe('moving between conversations', () => {
       'POST /conversations': { status: 201, body: { id: 5, title: null, created_at: ago(0) } },
       'POST /conversations/5/messages': () => pending.promise,
     })
-    await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+    await user.click(launcherButton())
     await user.type(await screen.findByRole('textbox', { name: 'Your question' }), 'Is there free delivery?')
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -217,14 +218,14 @@ describe('moving between conversations', () => {
     await user.keyboard('{Escape}')
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ask Loom & Lane' })).toHaveFocus()
+    expect(launcherButton()).toHaveFocus()
   })
 
   it('there is no history button before signing in', async () => {
     window.sessionStorage.clear()
     const user = userEvent.setup()
     render(<App fetchImpl={fakeFetch({})} />)
-    await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+    await user.click(launcherButton())
 
     expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
   })

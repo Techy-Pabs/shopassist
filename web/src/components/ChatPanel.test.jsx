@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { authHeader, callsTo, fakeFetch } from '../test/fakeApi.js'
-import { setMobile } from '../test/setup.js'
+import { scrollPastHero, setMobile } from '../test/setup.js'
+import { launcherButton } from '../test/launcher.js'
 
 const TOKEN_KEY = 'loomlane.token'
 const LOGIN_OK = { status: 200, body: { access_token: 'token-123', token_type: 'bearer' } }
@@ -12,11 +13,11 @@ function setup(routes = {}) {
   const fetch = fakeFetch(routes)
   const user = userEvent.setup()
   render(<App fetchImpl={fetch} />)
-  return { fetch, user, launcher: () => screen.getByRole('button', { name: 'Ask Loom & Lane' }) }
+  return { fetch, user, launcher: () => launcherButton() }
 }
 
 async function openPanel(user) {
-  await user.click(screen.getByRole('button', { name: 'Ask Loom & Lane' }))
+  await user.click(launcherButton())
   return screen.getByRole('dialog', { name: 'Loom & Lane' })
 }
 
@@ -35,7 +36,7 @@ describe('opening and closing the panel', () => {
     expect(within(panel).getByText('AI assistant')).toBeInTheDocument()
     expect(within(panel).getByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
     expect(within(panel).getByRole('button', { name: 'Close chat' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Ask Loom & Lane' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Chat' })).not.toBeInTheDocument() // the launcher makes way
   })
 
   it('moves focus into the panel', async () => {
@@ -92,16 +93,17 @@ describe('opening and closing the panel', () => {
     expect(panel).toHaveAttribute('aria-modal', 'true')
 
     // From the last control, Tab wraps to the first (the close button)
-    screen.getByRole('link', { name: 'support@loomandlane.example' }).focus()
+    within(panel).getByRole('link', { name: 'support@loomandlane.example' }).focus()
     await user.tab()
     expect(screen.getByRole('button', { name: 'Close chat' })).toHaveFocus()
 
     await user.tab({ shift: true })
-    expect(screen.getByRole('link', { name: 'support@loomandlane.example' })).toHaveFocus()
+    expect(within(panel).getByRole('link', { name: 'support@loomandlane.example' })).toHaveFocus()
   })
 
   it('hides the invitation once the panel has been opened', async () => {
     const { user } = setup()
+    act(() => scrollPastHero())
     expect(screen.getByText('Questions about delivery or sizing? Ask us here.')).toBeInTheDocument()
 
     await openPanel(user)

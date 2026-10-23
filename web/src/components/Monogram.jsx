@@ -4,7 +4,8 @@ import { store } from '../config/store.js'
 const variants = {
   header: 'h-avatar w-avatar bg-surface-100 text-indigo text-monogram',
   bubble: 'h-avatar-sm w-avatar-sm bg-indigo text-surface-100 text-monogram-small',
-  launcher: 'h-avatar w-avatar bg-surface-100 text-clay text-monogram-launcher',
+  // Larger in the round launcher on phones, as in the homepage mockup
+  launcher: 'h-control w-control bg-surface-100 text-clay text-monogram sm:h-avatar sm:w-avatar sm:text-monogram-launcher',
 }
 
 export default function Monogram({ variant }) {

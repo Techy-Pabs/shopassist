@@ -29,6 +29,13 @@
     outline-style: solid;
   }
 
+  /* Links to sections of the page glide there, unless less motion is asked for */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -72,5 +79,59 @@
     );
     background-size: theme('size.adire-tile') theme('size.adire-tile');
     background-position: calc(theme('size.adire-tile') / 2) calc(theme('size.adire-tile') / 2);
+  }
+
+  /* The homepage's cloth patterns, from the mockups. Each one is the
+     background of a photo's frame, so it shows while the photo loads. */
+
+  /* Large adire: big and small indigo-tint dots on indigo, offset by half a tile */
+  .adire-lg {
+    background-color: theme('colors.indigo');
+    background-image:
+      radial-gradient(circle, theme('colors.indigo-tint') theme('size.adire-lg-dot'), transparent theme('size.adire-lg-dot-edge')),
+      radial-gradient(circle, theme('colors.indigo-tint') theme('size.adire-lg-dot-small'), transparent theme('size.adire-lg-dot-small-edge'));
+    background-size: theme('size.adire-lg-tile') theme('size.adire-lg-tile');
+    background-position:
+      0 0,
+      calc(theme('size.adire-lg-tile') / 2) calc(theme('size.adire-lg-tile') / 2);
+  }
+
+  /* Aso oke stripe: clay cloth with a light thread and an indigo band in each repeat */
+  .aso {
+    background-color: theme('colors.clay');
+    background-image: repeating-linear-gradient(
+      90deg,
+      theme('colors.surface-100') 0 theme('size.aso-thread'),
+      transparent theme('size.aso-thread') theme('size.aso-band-start'),
+      theme('colors.indigo') theme('size.aso-band-start') theme('size.aso-band-end'),
+      transparent theme('size.aso-band-end') theme('size.aso-repeat')
+    );
+  }
+
+  /* Raffia weave: thin diagonal lines crossing on sand */
+  .weave {
+    background-color: theme('colors.sand');
+    background-image:
+      repeating-linear-gradient(45deg, theme('colors.line-strong') 0 theme('borderWidth.DEFAULT'), transparent theme('borderWidth.DEFAULT') theme('size.weave-repeat')),
+      repeating-linear-gradient(-45deg, theme('colors.line-strong') 0 theme('borderWidth.DEFAULT'), transparent theme('borderWidth.DEFAULT') theme('size.weave-repeat'));
+  }
+
+  /* Pinstripe: fine indigo lines on indigo-tint linen */
+  .pinstripe {
+    background-color: theme('colors.indigo-tint');
+    background-image: repeating-linear-gradient(
+      90deg,
+      theme('colors.indigo') 0 theme('borderWidth.DEFAULT'),
+      transparent theme('borderWidth.DEFAULT') theme('size.pinstripe-repeat')
+    );
+  }
+
+  /* Check: soft clay bands crossing on paper */
+  .check {
+    --check-band: color-mix(in srgb, theme('colors.clay') calc(theme('opacity.check-band') * 100%), transparent);
+    background-color: theme('colors.surface-100');
+    background-image:
+      repeating-linear-gradient(0deg, var(--check-band) 0 theme('size.check-band'), transparent theme('size.check-band') theme('size.check-repeat')),
+      repeating-linear-gradient(90deg, var(--check-band) 0 theme('size.check-band'), transparent theme('size.check-band') theme('size.check-repeat'));
   }
 }

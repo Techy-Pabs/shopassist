@@ -46,3 +46,49 @@ export const PlusIcon = () => (
     <path d="M12 5v14M5 12h14" />
   </Icon>
 )
+
+// Homepage icons, from the homepage mockups
+export const MenuIcon = () => (
+  <Icon className="h-icon-menu w-icon-menu">
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Icon>
+)
+
+export const ChatIcon = () => (
+  <Icon className="h-icon-sm w-icon-sm">
+    <path d="M4 5h16v11H9l-5 4z" />
+  </Icon>
+)
+
+// The delivery and payment strip: drawn in indigo, larger on desktop
+const serviceSize = 'h-icon-md w-icon-md shrink-0 text-indigo sm:h-icon-lg sm:w-icon-lg'
+
+export const ServiceIcon = ({ name }) => (
+  <Icon className={serviceSize}>
+    {name === 'van' && (
+      <>
+        <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" />
+        <circle cx="7" cy="17.5" r="1.5" />
+        <circle cx="17" cy="17.5" r="1.5" />
+      </>
+    )}
+    {name === 'globe' && (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+      </>
+    )}
+    {name === 'pin' && (
+      <>
+        <path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </>
+    )}
+    {name === 'cash' && (
+      <>
+        <rect x="3" y="6" width="18" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2.5" />
+      </>
+    )}
+  </Icon>
+)
