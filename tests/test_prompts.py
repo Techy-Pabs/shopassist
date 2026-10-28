@@ -99,3 +99,9 @@ def test_prompt_fixes_the_opening_of_a_reply_that_cant_answer():
     # The same phrase the outcome detection looks for
     assert f'begin your reply with exactly "{NO_INFO_PHRASE}"' in prompt
     assert NO_INFO_PHRASE == "I don't have information"
+
+
+def test_prompt_refuses_discounts_without_explaining():
+    prompt = build_system_prompt([])
+
+    assert "just say you can't offer that, without explaining why and without mentioning the store information" in prompt
