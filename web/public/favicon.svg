@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The L&L monogram in the token colours indigo and surface-100. Favicons
+       can't load web fonts, so Georgia stands in for Fraunces (its fallback). -->
+  <circle cx="16" cy="16" r="16" fill="#2E3A59"/>
+  <text x="16" y="20.5" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="700" fill="#F6F0E6">L&amp;L</text>
+</svg>

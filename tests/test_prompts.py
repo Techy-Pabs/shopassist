@@ -83,3 +83,11 @@ def test_prompt_asks_for_plain_text_without_markdown():
 
     assert "Write plain text only" in prompt
     assert "no asterisks for bold" in prompt
+
+
+def test_prompt_never_claims_a_product_the_store_information_doesnt_mention():
+    prompt = build_system_prompt([])
+
+    assert "a product that the store information doesn't mention" in prompt
+    assert "don't have information about that product and, as above, suggest contacting the support" in prompt
+    assert f"Never refer to it as one of {settings.store_name}'s products" in prompt

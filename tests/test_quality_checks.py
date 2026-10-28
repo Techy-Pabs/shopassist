@@ -27,7 +27,12 @@ def test_internal_terms_are_banned_in_every_question(tmp_path):
 def test_the_real_question_file_loads():
     questions = load_questions(__import__("pathlib").Path("quality/questions.json"))
 
-    assert len(questions) == 18
+    assert len(questions) == 24
+    # Every expected document is a knowledge file (or an upload the question sets up)
+    knowledge = {p.name for p in __import__("pathlib").Path("knowledge").glob("*.md")}
+    for q in questions:
+        if q["expected_document"] and not q.get("setup"):
+            assert q["expected_document"] in knowledge, q["id"]
     assert all("store information" in q["must_not_contain"] for q in questions)
     assert all("**" in q["must_not_contain"] for q in questions)  # no Markdown in any reply
 

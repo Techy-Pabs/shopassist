@@ -208,6 +208,88 @@
       ]
     },
     {
+      "id": "product-price",
+      "question": "How much is the Brown stripe shirt?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "34,000"
+        ]
+      ]
+    },
+    {
+      "id": "wash-adire",
+      "question": "How should I wash adire?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "cold"
+        ],
+        [
+          "inside out",
+          "inside-out"
+        ]
+      ]
+    },
+    {
+      "id": "men-collection",
+      "question": "What does the Men collection include?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "camp shirt"
+        ],
+        [
+          "kaftan"
+        ],
+        [
+          "drawstring"
+        ]
+      ]
+    },
+    {
+      "id": "product-not-listed",
+      "question": "How much is your silk evening gown?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "website",
+          "support@loomandlane.example",
+          "+234 800 000 0000"
+        ]
+      ],
+      "must_not_contain": [
+        "₦"
+      ]
+    },
+    {
+      "id": "care-indigo-dress",
+      "question": "How do I care for my indigo dress?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "cold"
+        ],
+        [
+          "inside out",
+          "inside-out"
+        ],
+        [
+          "shade"
+        ]
+      ]
+    },
+    {
+      "id": "hero-kaftan-price",
+      "question": "How much is the Gold stitch black kaftan?",
+      "expected_document": "products-and-fabrics.md",
+      "must_contain": [
+        [
+          "54,000"
+        ]
+      ]
+    },
+    {
       "id": "upload-fact",
       "setup": "quality/injection-test-document.txt",
       "question": "How much does gift wrapping cost?",
