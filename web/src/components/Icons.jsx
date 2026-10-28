@@ -47,6 +47,14 @@ export const PlusIcon = () => (
   </Icon>
 )
 
+// A small "i" in a circle, set inline before a line of text
+export const InfoIcon = () => (
+  <Icon className="mr-1.5 inline-block h-icon-sm w-icon-sm align-text-bottom">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5M12 7.5v.5" />
+  </Icon>
+)
+
 // Homepage icons, from the homepage mockups
 export const MenuIcon = () => (
   <Icon className="h-icon-menu w-icon-menu">

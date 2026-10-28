@@ -44,7 +44,8 @@ export const menu = [
 
 // The strip at the very top: this is a demo, and the assistant is the point
 export const demo = {
-  text: 'Portfolio demo: Loom & Lane is a fictional store built to showcase ShopAssist, an AI customer support assistant.',
+  lead: 'Portfolio demo.',
+  text: "Loom & Lane is a fictional store built to show ShopAssist, an AI customer support assistant. Its knowledge base is limited to this demo store's delivery, returns, sizing and product details.",
   action: 'Try the assistant',
 }
 

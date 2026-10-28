@@ -216,17 +216,25 @@ describe('the mobile menu', () => {
 })
 
 describe('the demo strip', () => {
-  const strip = () => screen.getByText(/^Portfolio demo:/).parentElement
+  const strip = () => screen.getByRole('banner').firstElementChild
 
-  it('says this is a demo store, above the announcement bar', () => {
+  it('says this is a demo store with a limited assistant, above the announcement bar', () => {
     setup()
 
     expect(strip()).toHaveTextContent(
-      'Portfolio demo: Loom & Lane is a fictional store built to showcase ShopAssist, an AI customer support assistant.',
+      "Portfolio demo. Loom & Lane is a fictional store built to show ShopAssist, an AI customer support assistant. Its knowledge base is limited to this demo store's delivery, returns, sizing and product details.",
     )
-    const header = screen.getByRole('banner')
-    expect(header.firstElementChild).toBe(strip())
+    expect(within(strip()).getByText('Portfolio demo.').tagName).toBe('STRONG')
     expect(strip().nextElementSibling).toHaveTextContent('Free delivery over ₦100,000')
+  })
+
+  it('is clay with surface-100 text, an icon hidden from screen readers, and a ring that shows on clay', () => {
+    setup()
+
+    expect(strip()).toHaveClass('bg-clay', 'text-surface-100')
+    expect(strip().querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    const tryIt = within(strip()).getByRole('button', { name: 'Try the assistant' })
+    expect(tryIt).toHaveClass('focus-visible:outline-surface-100')
   })
 
   it.each(['desktop', 'mobile'])('"Try the assistant" opens the chat and gets focus back on %s', async (device) => {

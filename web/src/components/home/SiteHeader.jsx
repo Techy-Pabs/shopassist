@@ -3,23 +3,28 @@ import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { announcements, demo, menu } from '../../config/home.js'
 import { store } from '../../config/store.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
-import { CloseIcon, MenuIcon } from '../Icons.jsx'
+import { CloseIcon, InfoIcon, MenuIcon } from '../Icons.jsx'
 
 // There is no shop behind the page, so search, account and the bag are left
 // out; every link scrolls to a section of this page.
 const navLink = 'text-ink no-underline hover:text-clay'
 
-// The demo strip: ink, with an underlined text button in surface-100 (clay
-// on ink is too faint for small text). The button is a full size target.
+// The demo strip: surface-100 on clay (5.2:1). The button's focus ring is
+// surface-100 too, as the usual indigo ring is too faint on clay (1.9:1),
+// and it stays surface-100 on hover (sand on clay is 4.3:1, below 4.5:1).
+// The button is a full size target.
 function DemoStrip({ onAsk }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 bg-ink px-4 py-1 text-center text-label font-normal text-surface-100 sm:py-0">
-      <p className="m-0 py-2 sm:py-0">{demo.text}</p>
+    <div className="flex flex-wrap items-center justify-center gap-x-3 bg-clay px-4 py-1 text-center text-label font-normal text-surface-100 sm:py-0">
+      <p className="m-0 py-2">
+        <InfoIcon />
+        <strong className="font-semibold">{demo.lead}</strong> {demo.text}
+      </p>
       <button
         type="button"
         onClick={onAsk}
         aria-haspopup="dialog"
-        className="min-h-control cursor-pointer border-0 bg-transparent p-0 font-sans text-label text-surface-100 underline hover:text-sand"
+        className="min-h-control cursor-pointer border-0 bg-transparent p-0 font-sans text-label text-surface-100 underline hover:no-underline focus-visible:outline-surface-100"
       >
         {demo.action}
       </button>

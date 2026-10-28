@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     # Optional here so the app (and tests) can start without it;
     # the AI service fails cleanly if it's missing when a reply is needed.
     openrouter_api_key: str | None = None
-    ai_timeout_seconds: float = 30
+    # Long enough for a model that thinks before it answers (Ultra can take
+    # over 20 seconds) and for OpenRouter to try the fallback if it can't
+    ai_timeout_seconds: float = 45
     # Room for models that reason before answering, so replies aren't cut off
     ai_max_tokens: int = 1000
     # Models to try, in order, if AI_MODEL can't answer (comma separated).

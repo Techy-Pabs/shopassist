@@ -45,3 +45,11 @@ def test_empty_database_url_is_rejected_clearly():
         Settings(_env_file=None, database_url="  ", jwt_secret_key="test", ai_model="test")
 
     assert "DATABASE_URL is empty" in str(error.value)
+
+
+def test_ai_timeout_defaults_to_45_seconds(monkeypatch):
+    # Room for a slow first model and then the fallback; still overridable
+    monkeypatch.delenv("AI_TIMEOUT_SECONDS", raising=False)
+    assert Settings(_env_file=None, database_url="postgresql://u:p@h/db", jwt_secret_key="test", ai_model="test").ai_timeout_seconds == 45
+    monkeypatch.setenv("AI_TIMEOUT_SECONDS", "60")
+    assert Settings(_env_file=None, database_url="postgresql://u:p@h/db", jwt_secret_key="test", ai_model="test").ai_timeout_seconds == 60

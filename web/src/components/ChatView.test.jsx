@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { callsTo, deferred, fakeFetch } from '../test/fakeApi.js'
-import { GREETING, SUGGESTIONS } from './WelcomeScreen.jsx'
+import { DEMO_NOTE, GREETING, SUGGESTIONS } from './WelcomeScreen.jsx'
 import { launcherButton } from '../test/launcher.js'
 
 const TOKEN_KEY = 'loomlane.token'
@@ -43,6 +43,16 @@ describe('the welcome screen', () => {
 
     expect(await screen.findByRole('heading', { name: 'Hello, how can we help?' })).toBeInTheDocument()
     expect(screen.getByText(GREETING)).toBeInTheDocument()
+    expect(screen.getByText(DEMO_NOTE)).toHaveClass('text-caption', 'text-ink-muted')
+    // Above the chips at every size; on desktop the heading is the smaller
+    // heading style so the note and all five chips fit in the panel
+    const note = screen.getByText(DEMO_NOTE)
+    expect(note.compareDocumentPosition(screen.getByRole('group', { name: 'Popular questions' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(note).not.toHaveClass('sm:order-last')
+    expect(screen.getByRole('heading', { name: 'Hello, how can we help?' })).toHaveClass('text-heading-welcome', 'sm:text-heading')
+    expect(DEMO_NOTE).toBe(
+      "This is a demo with a limited knowledge base. I can answer questions about Loom & Lane's delivery, returns, sizing and products.",
+    )
     const chips = within(screen.getByRole('group', { name: 'Popular questions' })).getAllByRole('button')
     expect(chips.map((chip) => chip.textContent)).toEqual(SUGGESTIONS)
     expect(input()).toHaveFocus()

@@ -52,7 +52,7 @@ Only the checked items are done. The others are planned and are **not** built ye
 | Web framework | FastAPI, Pydantic |
 | Database | PostgreSQL 16, SQLAlchemy 2.0, Alembic, pgvector (`halfvec` with an HNSW index) |
 | Authentication | PyJWT (HS256), pwdlib with Argon2 |
-| AI | OpenRouter through the `openai` Python library (OpenAI-compatible API): `nvidia/nemotron-3-super-120b-a12b:free` for replies (with `nvidia/nemotron-3.5-super-vl:free` as a fallback), `nvidia/nemotron-3-embed-1b:free` for embeddings |
+| AI | OpenRouter through the `openai` Python library (OpenAI-compatible API): `nvidia/nemotron-3-ultra-550b-a55b:free` for replies (with `nvidia/nemotron-3.5-super-vl:free` as a fallback), `nvidia/nemotron-3-embed-1b:free` for embeddings |
 | Configuration | pydantic-settings, read from environment variables or a `.env` file |
 | Testing | Pytest, FastAPI TestClient |
 | Containers | Docker, Docker Compose |
@@ -180,11 +180,11 @@ docker run --rm python:3.13-slim python -c "import secrets; print(secrets.token_
 | `JWT_EXPIRE_MINUTES` | No | `30` | How long a login token stays valid |
 | `STORE_NAME` | No | `ShopAssist` | Store name used in the assistant's system prompt. `.env.example` sets `Loom & Lane`, the demo store. |
 | `AI_PROVIDER` | No | `openrouter` | Which AI provider to use. `openrouter` is the only one available today. |
-| `AI_MODEL` | Yes | | Model to request from the provider. Recommended: `nvidia/nemotron-3-super-120b-a12b:free`. Avoid `openrouter/free`: it picks a free model per request, and can pick a safety classifier that answers "User Safety: safe" instead of replying. |
+| `AI_MODEL` | Yes | | Model to request from the provider. Recommended: `nvidia/nemotron-3-ultra-550b-a55b:free`. Avoid `openrouter/free`: it picks a free model per request, and can pick a safety classifier that answers "User Safety: safe" instead of replying. |
 | `AI_FALLBACK_MODELS` | No | (none) | Chat models to try, in order, when `AI_MODEL` can't answer (for example its provider is down), comma separated. Sent to OpenRouter as its fallback list. Recommended: `nvidia/nemotron-3.5-super-vl:free`. The logs show which model answered. |
 | `AI_BASE_URL` | No | `https://openrouter.ai/api/v1` | Address of the provider's API |
 | `OPENROUTER_API_KEY` | For AI replies | | Your OpenRouter key. Without it the app still runs, but sending a message returns `502`. |
-| `AI_TIMEOUT_SECONDS` | No | `30` | How long to wait for an AI reply before giving up |
+| `AI_TIMEOUT_SECONDS` | No | `45` | How long to wait for an AI reply before giving up. 45 seconds because Ultra thinks before it answers and can take over 20 seconds, and if the app gives up first, OpenRouter never gets the chance to try the fallback model. |
 | `AI_MAX_TOKENS` | No | `1000` | Upper limit on the length of each AI reply. Some free models reason before answering, which uses part of this; too low and replies are cut off. |
 | `EMBEDDING_MODEL` | No | `nvidia/nemotron-3-embed-1b:free` | Model that turns text into embeddings for the knowledge base |
 | `EMBEDDING_DIMENSIONS` | No | `2048` | Size of each embedding. Must match the database column, so change it only together with a new migration. |
@@ -206,7 +206,7 @@ PostgreSQL only reads `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` the
 2. Go to [openrouter.ai/keys](https://openrouter.ai/keys) and create a key.
 3. Paste it into `.env` as `OPENROUTER_API_KEY`.
 
-With a `:free` model such as `nvidia/nemotron-3-super-120b-a12b:free` there is no cost. Free models have a daily request limit (50 requests a day at the time of writing). A free model can be busy, changed or withdrawn by its provider, so set `AI_FALLBACK_MODELS` to a second free chat model: OpenRouter then tries it whenever the first can't answer. If replies still fail, check both models are still listed on OpenRouter.
+With a `:free` model such as `nvidia/nemotron-3-ultra-550b-a55b:free` there is no cost. Free models have a daily request limit (50 requests a day at the time of writing). A free model can be busy, changed or withdrawn by its provider, so set `AI_FALLBACK_MODELS` to a second free chat model: OpenRouter then tries it whenever the first can't answer. If replies still fail, check both models are still listed on OpenRouter. (The previous main model, `nvidia/nemotron-3-super-120b-a12b:free`, lost its only provider in October 2026; Ultra replaced it after a local trial in which it answered every question itself, correctly, with its reasoning kept out of the reply.)
 
 ## Running the app
 
@@ -571,14 +571,14 @@ The tables are created on the first start, when the container runs the migration
 |---|---|---|
 | `DATABASE_URL` | Yes | The Neon connection string from step 1, unchanged |
 | `JWT_SECRET_KEY` | Yes | A new long random value. Don't reuse your local one. |
-| `AI_MODEL` | Yes | `nvidia/nemotron-3-super-120b-a12b:free` (recommended), or another OpenRouter chat model. Not `openrouter/free`. |
+| `AI_MODEL` | Yes | `nvidia/nemotron-3-ultra-550b-a55b:free` (recommended), or another OpenRouter chat model. Not `openrouter/free`. |
 | `AI_FALLBACK_MODELS` | Recommended | `nvidia/nemotron-3.5-super-vl:free` |
 | `OPENROUTER_API_KEY` | Yes | Your OpenRouter key |
 | `JWT_EXPIRE_MINUTES` | No | Defaults to `30` |
 | `STORE_NAME` | Recommended | `Loom & Lane` for the demo. Defaults to `ShopAssist`. |
 | `AI_PROVIDER` | No | Defaults to `openrouter` |
 | `AI_BASE_URL` | No | Defaults to `https://openrouter.ai/api/v1` |
-| `AI_TIMEOUT_SECONDS` | No | Defaults to `30` |
+| `AI_TIMEOUT_SECONDS` | No | Defaults to `45`, which suits Ultra (see [Environment variables](#environment-variables)); set it only to override that. |
 | `AI_MAX_TOKENS` | No | Defaults to `1000` |
 | `EMBEDDING_MODEL` | No | Defaults to `nvidia/nemotron-3-embed-1b:free` |
 | `EMBEDDING_DIMENSIONS` | No | Defaults to `2048` |
