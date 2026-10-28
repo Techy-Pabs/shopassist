@@ -133,6 +133,8 @@ web/                 the chat frontend, self-contained (see Chat frontend)
 
 These reduce the risk; they don't remove it. Removing fake tags stops a document from breaking out of its section, but nothing can stop plain language instructions inside a document from being read by the AI. Only upload documents you trust, and check new ones with the quality check.
 
+**Answer outcomes are a good guess, not a certainty.** Each assistant reply is saved with an outcome, `answered` or `no_info` ("couldn't answer"), so the admin dashboard can flag questions the knowledge base doesn't cover. The prompt tells the assistant to begin a reply that can't answer with exactly "I don't have information". A reply is `no_info` if it begins with that phrase (ignoring case and leading spaces), or if the knowledge base search found nothing relevant and the phrase appears anywhere in it. A model may occasionally word a refusal differently, so a few replies may be labelled wrongly; that is acceptable for a dashboard label. We don't ask the model to output a hidden tag instead, because a customer could trick it into writing the tag, and free models follow formatting instructions unreliably. Each reply also records which knowledge documents were in its prompt (one row per document, with the best similarity; documents included in every prompt, such as the contact details, have none). If a document is deleted later, its name stays on the reply. Replies saved before this feature have no outcome and no sources. Customers never see either; they are for admins.
+
 **Knowledge base logging.** The logs record which chunks were retrieved and their similarity scores (chunk titles only), and how many texts were embedded. They never record what the customer wrote.
 
 **Configuration and secrets.** All credentials come from environment variables. `.env` is listed in both `.gitignore` and `.dockerignore`, so it is never committed or copied into an image. The test container blanks the AI key, so tests can't reach OpenRouter even by mistake.
@@ -633,6 +635,8 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 | GET | `/conversations/{conversation_id}/messages` | Yes | Messages in a conversation, oldest first | `200`, `401`, `404` |
 | POST | `/conversations/{conversation_id}/messages` | Yes | Send a message and get the AI's reply. Body: `content` (1 to 2000 characters) | `201` reply, `401`, `404`, `422`, `502` AI unavailable |
 | POST | `/conversations/{conversation_id}/retry` | Yes | After a failed reply (`502`), try again to answer the latest question, without saving it twice. Only the reply is saved. | `201` reply, `401`, `404`, `409` nothing to retry, `502` |
+| POST | `/admin/conversations/{conversation_id}/resolve` | Admin | Mark a conversation resolved (records when and by whom; resolving again keeps the first) | `200`, `401`, `403`, `404`, `422` |
+| POST | `/admin/conversations/{conversation_id}/reopen` | Admin | Mark it as needing attention again. A new customer message in a resolved conversation also reopens it. | `200`, `401`, `403`, `404`, `422` |
 | GET, POST, DELETE | `/admin/...` | Admin | The admin endpoints, see [Admins](#admins) | `200`, `201`, `204`, `401`, `403`, `404`, `409`, `413`, `415`, `422`, `502` |
 
 "Auth: Yes" means the request needs an `Authorization: Bearer <token>` header; "Admin" means that token must belong to an admin. User responses contain only `id`, `email`, `role` and `created_at`.

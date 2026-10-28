@@ -27,6 +27,8 @@ class RetrievedChunk:
     title: str = ""
     source_type: str = SOURCE_FOLDER
     chunk_id: int | None = None
+    # The document the chunk belongs to, for recording a reply's sources
+    document_id: int | None = None
 
     @property
     def label(self) -> str:
@@ -49,7 +51,7 @@ def search_by_vector(db: Session, vector: Sequence[float], limit: int | None) ->
     query = (
         select(
             Document.source, Chunk.content, (1 - distance).label("similarity"),
-            Document.title, Document.source_type, Chunk.id,
+            Document.title, Document.source_type, Chunk.id, Document.id,
         )
         .join(Document)
         # Chunks embedded by another model can't be compared with this query
@@ -59,8 +61,8 @@ def search_by_vector(db: Session, vector: Sequence[float], limit: int | None) ->
     if limit is not None:
         query = query.limit(limit)
     return [
-        RetrievedChunk(source, content, float(sim), title, source_type, chunk_id)
-        for source, content, sim, title, source_type, chunk_id in db.execute(query)
+        RetrievedChunk(source, content, float(sim), title, source_type, chunk_id, document_id)
+        for source, content, sim, title, source_type, chunk_id, document_id in db.execute(query)
     ]
 
 
@@ -100,7 +102,7 @@ def always_included_chunks(db: Session, exclude: list[RetrievedChunk]) -> list[R
         return []
     already = {c.chunk_id for c in exclude}
     rows = db.execute(
-        select(Document.source, Chunk.content, Document.title, Chunk.id)
+        select(Document.source, Chunk.content, Document.title, Chunk.id, Document.id)
         .join(Document)
         .where(
             Document.source.in_(sources),
@@ -111,8 +113,8 @@ def always_included_chunks(db: Session, exclude: list[RetrievedChunk]) -> list[R
         .order_by(Document.source, Chunk.chunk_index)
     ).all()
     chunks = [
-        RetrievedChunk(source, content, None, title, SOURCE_FOLDER, chunk_id)
-        for source, content, title, chunk_id in rows
+        RetrievedChunk(source, content, None, title, SOURCE_FOLDER, chunk_id, document_id)
+        for source, content, title, chunk_id, document_id in rows
         if chunk_id not in already
     ]
     if chunks:

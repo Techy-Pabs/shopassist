@@ -34,6 +34,15 @@ class AdminConversation(BaseModel):
     created_at: datetime
 
 
+class ConversationResolution(BaseModel):
+    """A conversation's resolved state, after resolving or reopening it."""
+
+    id: int
+    # Both None when the conversation is open
+    resolved_at: datetime | None
+    resolved_by: int | None
+
+
 class AdminDocument(BaseModel):
     id: int
     title: str

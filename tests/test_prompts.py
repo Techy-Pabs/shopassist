@@ -1,5 +1,5 @@
 from app.core.config import settings
-from app.services.prompts import NO_STORE_INFORMATION, build_system_prompt
+from app.services.prompts import NO_INFO_PHRASE, NO_STORE_INFORMATION, build_system_prompt
 from app.services.retrieval import RetrievedChunk
 
 
@@ -89,5 +89,13 @@ def test_prompt_never_claims_a_product_the_store_information_doesnt_mention():
     prompt = build_system_prompt([])
 
     assert "a product that the store information doesn't mention" in prompt
-    assert "don't have information about that product and, as above, suggest contacting the support" in prompt
+    assert 'begin your reply with exactly "I don\'t have information about" followed by the product' in prompt
     assert f"Never refer to it as one of {settings.store_name}'s products" in prompt
+
+
+def test_prompt_fixes_the_opening_of_a_reply_that_cant_answer():
+    prompt = build_system_prompt([])
+
+    # The same phrase the outcome detection looks for
+    assert f'begin your reply with exactly "{NO_INFO_PHRASE}"' in prompt
+    assert NO_INFO_PHRASE == "I don't have information"

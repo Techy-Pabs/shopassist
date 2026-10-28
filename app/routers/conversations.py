@@ -3,10 +3,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db, get_user_conversation
-from app.models import Conversation, Message, User
+from app.models import Conversation, Message, MessageSource, User
 from app.schemas.conversation import ConversationCreate, ConversationListItem, ConversationResponse
 from app.schemas.message import MessageCreate, MessageResponse
 from app.services.ai import AIServiceError, generate_reply
+from app.services.outcomes import detect_outcome, sources_for
 from app.services.prompts import build_system_prompt
 from app.services.retrieval import build_search_text, find_store_information
 from app.services.text import shorten
@@ -98,6 +99,10 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     db.add(Message(conversation_id=conversation.id, role="user", content=body.content))
+    if conversation.resolved_at is not None:
+        # The customer wrote again, so it needs attention again
+        conversation.resolved_at = None
+        conversation.resolved_by = None
     if not conversation.title:
         # An untitled conversation is named after its first message
         conversation.title = shorten(body.content, TITLE_LENGTH)
@@ -159,7 +164,16 @@ def reply_to_latest_question(conversation: Conversation, db: Session) -> Message
             "The assistant is unavailable right now. Please try again in a moment.",
         )
 
-    assistant_message = Message(conversation_id=conversation.id, role="assistant", content=reply)
+    assistant_message = Message(
+        conversation_id=conversation.id,
+        role="assistant",
+        content=reply,
+        outcome=detect_outcome(reply, store_information),
+        sources=[
+            MessageSource(document_id=s.document_id, document_name=s.document_name, similarity=s.similarity)
+            for s in sources_for(store_information)
+        ],
+    )
     db.add(assistant_message)
     db.commit()
     db.refresh(assistant_message)

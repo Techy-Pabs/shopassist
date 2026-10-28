@@ -13,8 +13,8 @@ from app.models.user import User as UserModel
 from app.models import Chunk, Conversation, Document, Message, User
 from app.models.document import SOURCE_UPLOAD
 from app.schemas.admin import (
-    AdminConversation, AdminDocument, AdminDocumentDetail, AdminStats, AdminUser, ChunkPreview, Page,
-    UploadedDocument,
+    AdminConversation, AdminDocument, AdminDocumentDetail, AdminStats, AdminUser, ChunkPreview,
+    ConversationResolution, Page, UploadedDocument,
 )
 from app.schemas.message import MessageResponse
 from app.services.ai import AIServiceError
@@ -97,6 +97,45 @@ def list_conversation_messages(
     )
     messages = db.scalars(query.limit(page.limit).offset(page.offset)).all()
     return Page(items=messages, total=count(db, query), limit=page.limit, offset=page.offset)
+
+
+def _conversation_or_404(db: Session, conversation_id: int) -> Conversation:
+    conversation = db.get(Conversation, conversation_id)
+    if conversation is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    return conversation
+
+
+def _resolution(conversation: Conversation) -> ConversationResolution:
+    return ConversationResolution(
+        id=conversation.id, resolved_at=conversation.resolved_at, resolved_by=conversation.resolved_by
+    )
+
+
+@router.post("/conversations/{conversation_id}/resolve", response_model=ConversationResolution)
+def resolve_conversation(
+    conversation_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Mark the conversation resolved. Resolving it again keeps the first resolution."""
+    conversation = _conversation_or_404(db, conversation_id)
+    if conversation.resolved_at is None:
+        conversation.resolved_at = func.now()
+        conversation.resolved_by = admin.id
+        db.commit()
+        db.refresh(conversation)
+    return _resolution(conversation)
+
+
+@router.post("/conversations/{conversation_id}/reopen", response_model=ConversationResolution)
+def reopen_conversation(conversation_id: int, db: Session = Depends(get_db)):
+    """Mark the conversation as needing attention again (does nothing if it is open)."""
+    conversation = _conversation_or_404(db, conversation_id)
+    if conversation.resolved_at is not None:
+        conversation.resolved_at = None
+        conversation.resolved_by = None
+        db.commit()
+        db.refresh(conversation)
+    return _resolution(conversation)
 
 
 @router.get("/knowledge/documents", response_model=Page[AdminDocument])
