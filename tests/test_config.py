@@ -53,3 +53,14 @@ def test_ai_timeout_defaults_to_45_seconds(monkeypatch):
     assert Settings(_env_file=None, database_url="postgresql://u:p@h/db", jwt_secret_key="test", ai_model="test").ai_timeout_seconds == 45
     monkeypatch.setenv("AI_TIMEOUT_SECONDS", "60")
     assert Settings(_env_file=None, database_url="postgresql://u:p@h/db", jwt_secret_key="test", ai_model="test").ai_timeout_seconds == 60
+
+
+def test_store_timezone_defaults_to_utc_and_must_be_a_real_zone(monkeypatch):
+    monkeypatch.delenv("STORE_TIMEZONE", raising=False)
+    base = {"_env_file": None, "database_url": "postgresql://u:p@h/db", "jwt_secret_key": "test", "ai_model": "test"}
+
+    assert Settings(**base).store_timezone == "UTC"
+    assert Settings(**base, store_timezone="Africa/Lagos").store_zone.key == "Africa/Lagos"
+    for bad in ("Lagos", "Mars/Olympus", "../etc/passwd"):
+        with pytest.raises(ValidationError, match="STORE_TIMEZONE must be an IANA time zone name"):
+            Settings(**base, store_timezone=bad)

@@ -4,9 +4,12 @@ Tests use their own database (the development database name + "_test"),
 which is emptied before every test. The AI is always replaced by FakeAI.
 """
 
+from contextlib import contextmanager
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
@@ -52,6 +55,31 @@ def engine():
     Base.metadata.create_all(engine)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def count_queries(engine):
+    """with count_queries() as counter: ... -> counter.count SQL statements ran inside.
+
+    Used to prove a list endpoint runs the same number of queries for 2 rows
+    as for 20 (no query per row).
+    """
+
+    @contextmanager
+    def _count():
+        counter = SimpleNamespace(count=0, statements=[])
+
+        def before_execute(conn, cursor, statement, parameters, context, executemany):
+            counter.count += 1
+            counter.statements.append(statement)
+
+        event.listen(engine, "before_cursor_execute", before_execute)
+        try:
+            yield counter
+        finally:
+            event.remove(engine, "before_cursor_execute", before_execute)
+
+    return _count
 
 
 @pytest.fixture

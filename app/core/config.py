@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -57,6 +59,23 @@ class Settings(BaseSettings):
     # Browser origins allowed to call the API (comma separated), e.g. the
     # Vercel frontend. Never "*".
     allowed_origins: str = "http://localhost:5173"
+
+    # The store's time zone (an IANA name such as Africa/Lagos): where the
+    # admin dashboard's days start and end
+    store_timezone: str = "UTC"
+
+    @field_validator("store_timezone")
+    @classmethod
+    def known_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError(f"STORE_TIMEZONE must be an IANA time zone name such as Africa/Lagos, not {value!r}")
+        return value
+
+    @property
+    def store_zone(self) -> ZoneInfo:
+        return ZoneInfo(self.store_timezone)
 
     @field_validator("allowed_origins")
     @classmethod

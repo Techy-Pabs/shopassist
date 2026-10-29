@@ -1,24 +1,28 @@
-"""Read only endpoints for admins (the store owner and staff)."""
+"""Endpoints for admins (the store owner and staff): the dashboard's data."""
 
 import logging
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import settings
 from app.dependencies import get_db, require_admin
 from app.models.user import User as UserModel
-from app.models import Chunk, Conversation, Document, Message, User
-from app.models.document import SOURCE_UPLOAD
+from app.models import Chunk, Conversation, Document, Message, MessageSource, User
+from app.models.document import SOURCE_FOLDER, SOURCE_UPLOAD
 from app.schemas.admin import (
-    AdminConversation, AdminDocument, AdminDocumentDetail, AdminStats, AdminUser, ChunkPreview,
-    ConversationResolution, Page, UploadedDocument,
+    AdminConversation, AdminConversationDetail, AdminDocument, AdminDocumentDetail, AdminMessage, AdminSource,
+    AdminStats, AdminUser, ChunkPreview, ConversationPage, ConversationResolution, CustomerSummary,
+    DocumentPage, EarlierConversation, Page, StatsRange, UploadedDocument, UploadLimits,
 )
 from app.schemas.message import MessageResponse
+from app.services import admin_queries as q
 from app.services.ai import AIServiceError
-from app.services.extraction import UploadError
+from app.services.extraction import ALLOWED_EXTENSIONS, UploadError
 from app.services.uploads import process_upload, read_limited
 
 logger = logging.getLogger(__name__)
@@ -26,6 +30,12 @@ logger = logging.getLogger(__name__)
 # Chunks shown in a document's preview, and how much of each
 PREVIEW_CHUNKS = 3
 PREVIEW_CHARS = 300
+
+# Other conversations shown beside one in the detail view
+EARLIER_CONVERSATIONS = 5
+
+# The search box: matched anywhere, case-insensitive, as a bound parameter
+Search = Query(None, alias="q", max_length=200, description="Text to search for")
 
 # Every route here requires an admin. require_admin also logs each request.
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -51,37 +61,100 @@ def count(db: Session, query) -> int:
 
 
 @router.get("/users", response_model=Page[AdminUser])
-def list_users(page: Pagination = Depends(), db: Session = Depends(get_db)):
-    query = select(User).order_by(User.created_at.desc(), User.id.desc())
-    users = db.scalars(query.limit(page.limit).offset(page.offset)).all()
-    return Page(items=users, total=count(db, query), limit=page.limit, offset=page.offset)
+def list_users(q_text: str | None = Search, page: Pagination = Depends(), db: Session = Depends(get_db)):
+    """Every account (customers and admins), newest first. q searches the email."""
+    query = q.user_summaries()
+    if q_text:
+        query = query.where(User.email.ilike(q.like_pattern(q_text), escape="\\"))
+    rows = db.execute(query.limit(page.limit).offset(page.offset)).all()
+    items = [AdminUser(**row._mapping) for row in rows]
+    return Page(items=items, total=count(db, query), limit=page.limit, offset=page.offset)
 
 
-@router.get("/conversations", response_model=Page[AdminConversation])
+def _admin_conversation(row) -> AdminConversation:
+    c = row.Conversation
+    return AdminConversation(
+        id=c.id, title=c.title, user_id=c.user_id, owner_email=row.owner_email,
+        message_count=row.message_count, created_at=c.created_at, last_activity=row.last_activity,
+        status=row.status, attention_reason=row.attention_reason, resolved_at=c.resolved_at,
+    )
+
+
+@router.get("/conversations", response_model=ConversationPage)
 def list_conversations(
+    filter: Literal["all", "attention", "resolved"] = Query("all", description="Which tab"),
+    q_text: str | None = Search,
     user_id: int | None = Query(None, description="Only this user's conversations"),
     page: Pagination = Depends(),
     db: Session = Depends(get_db),
 ):
-    query = (
-        select(Conversation, User.email, func.count(Message.id))
-        .join(User, Conversation.user_id == User.id)
-        .outerjoin(Message, Message.conversation_id == Conversation.id)
-        .group_by(Conversation.id, User.email)
-        .order_by(Conversation.created_at.desc(), Conversation.id.desc())
-    )
+    """Conversations, newest activity first. q searches customer questions and emails."""
+    query = q.conversation_summaries()
     if user_id is not None:
         # A filter, not a lookup: an unknown user id simply matches nothing
         query = query.where(Conversation.user_id == user_id)
+    if q_text:
+        query = q.search_conversations(query, q_text)
+    counts = q.conversation_counts(db, query)  # before the tab filter, so every tab has its count
+    query = q.filter_conversations(query, filter)
     rows = db.execute(query.limit(page.limit).offset(page.offset)).all()
-    items = [
-        AdminConversation(
-            id=c.id, title=c.title, user_id=c.user_id, owner_email=email,
-            message_count=message_count, created_at=c.created_at,
+    return ConversationPage(
+        items=[_admin_conversation(row) for row in rows],
+        total=count(db, query), limit=page.limit, offset=page.offset, counts=counts,
+    )
+
+
+@router.get("/conversations/{conversation_id}", response_model=AdminConversationDetail)
+def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
+    """A conversation with every message, its outcome and sources, and its customer."""
+    row = db.execute(q.conversation_summaries().where(Conversation.id == conversation_id)).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    conversation = row.Conversation
+
+    messages = db.scalars(
+        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at, Message.id)
+    ).all()
+    # "Answered from": found documents only (always included ones have no score),
+    # all of the conversation's in one query
+    sources: dict[int, list[AdminSource]] = {}
+    for source in db.scalars(
+        select(MessageSource)
+        .join(Message, Message.id == MessageSource.message_id)
+        .where(Message.conversation_id == conversation_id, MessageSource.similarity.is_not(None))
+        .order_by(MessageSource.message_id, MessageSource.similarity.desc(), MessageSource.id)
+    ):
+        sources.setdefault(source.message_id, []).append(
+            AdminSource(document_id=source.document_id, document_name=source.document_name, similarity=source.similarity)
         )
-        for c, email, message_count in rows
-    ]
-    return Page(items=items, total=count(db, query), limit=page.limit, offset=page.offset)
+
+    customer = db.get(User, conversation.user_id)
+    earlier = db.execute(
+        q.conversation_summaries()
+        .where(Conversation.user_id == customer.id, Conversation.id != conversation_id)
+        .limit(EARLIER_CONVERSATIONS)
+    ).all()
+    return AdminConversationDetail(
+        conversation=_admin_conversation(row),
+        resolved_by=conversation.resolved_by,
+        messages=[
+            AdminMessage(
+                id=m.id, role=m.role, content=m.content, created_at=m.created_at,
+                outcome=m.outcome, sources=sources.get(m.id, []),
+            )
+            for m in messages
+        ],
+        customer=CustomerSummary(
+            id=customer.id, email=customer.email, joined=customer.created_at,
+            **q.customer_summary(db, customer.id),
+            earlier_conversations=[
+                EarlierConversation(
+                    id=e.Conversation.id, title=e.Conversation.title, last_activity=e.last_activity, status=e.status,
+                )
+                for e in earlier
+            ],
+        ),
+    )
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=Page[MessageResponse])
@@ -120,6 +193,7 @@ def resolve_conversation(
     conversation = _conversation_or_404(db, conversation_id)
     if conversation.resolved_at is None:
         conversation.resolved_at = func.now()
+        conversation.last_resolved_at = conversation.resolved_at
         conversation.resolved_by = admin.id
         db.commit()
         db.refresh(conversation)
@@ -128,25 +202,53 @@ def resolve_conversation(
 
 @router.post("/conversations/{conversation_id}/reopen", response_model=ConversationResolution)
 def reopen_conversation(conversation_id: int, db: Session = Depends(get_db)):
-    """Mark the conversation as needing attention again (does nothing if it is open)."""
+    """Mark the conversation as needing attention again (does nothing if it is open).
+
+    Reopening by hand also forgets the last resolution, so its earlier
+    "couldn't answer" replies count again.
+    """
     conversation = _conversation_or_404(db, conversation_id)
     if conversation.resolved_at is not None:
         conversation.resolved_at = None
         conversation.resolved_by = None
+        conversation.last_resolved_at = None
         db.commit()
         db.refresh(conversation)
     return _resolution(conversation)
 
 
-@router.get("/knowledge/documents", response_model=Page[AdminDocument])
-def list_knowledge_documents(page: Pagination = Depends(), db: Session = Depends(get_db)):
+@router.get("/knowledge/documents", response_model=DocumentPage)
+def list_knowledge_documents(
+    source_type: Literal["all", "folder", "upload"] = Query("all", description="Built in (folder) or uploaded"),
+    q_text: str | None = Search,
+    page: Pagination = Depends(),
+    db: Session = Depends(get_db),
+):
+    """Knowledge documents, by name. q searches the title and file name."""
+    uploader = aliased(User)
     models = func.array_remove(func.array_agg(Chunk.embedding_model.distinct()), None)
     query = (
-        select(Document, func.count(Chunk.id), models)
+        select(Document, func.count(Chunk.id), models, uploader.email)
         .outerjoin(Chunk, Chunk.document_id == Document.id)
-        .group_by(Document.id)
+        .outerjoin(uploader, uploader.id == Document.uploaded_by)
+        .group_by(Document.id, uploader.email)
         .order_by(Document.source)
     )
+    if q_text:
+        pattern = q.like_pattern(q_text)
+        query = query.where(or_(
+            Document.title.ilike(pattern, escape="\\"), Document.source.ilike(pattern, escape="\\"),
+        ))
+    # Each filter's count, with the same search, in one query
+    found = query.order_by(None).subquery()
+    folder, upload = db.execute(
+        select(
+            func.count().filter(found.c.source_type == SOURCE_FOLDER),
+            func.count().filter(found.c.source_type == SOURCE_UPLOAD),
+        ).select_from(found)
+    ).one()
+    if source_type != "all":
+        query = query.where(Document.source_type == source_type)
     rows = db.execute(query.limit(page.limit).offset(page.offset)).all()
     items = [
         AdminDocument(
@@ -154,11 +256,24 @@ def list_knowledge_documents(page: Pagination = Depends(), db: Session = Depends
             original_filename=d.original_filename, uploaded_by=d.uploaded_by, chunk_count=chunk_count,
             embedding_models=sorted(used_models),
             stale=any(m != settings.embedding_model for m in used_models),
-            updated_at=d.updated_at,
+            updated_at=d.updated_at, uploaded_by_email=uploader_email,
         )
-        for d, chunk_count, used_models in rows
+        for d, chunk_count, used_models, uploader_email in rows
     ]
-    return Page(items=items, total=count(db, query), limit=page.limit, offset=page.offset)
+    return DocumentPage(
+        items=items, total=count(db, query), limit=page.limit, offset=page.offset,
+        counts={"all": folder + upload, "folder": folder, "upload": upload},
+    )
+
+
+@router.get("/knowledge/limits", response_model=UploadLimits)
+def upload_limits():
+    """What the upload form accepts, so the page shows the real limits."""
+    return UploadLimits(
+        accepted_types=list(ALLOWED_EXTENSIONS), max_file_bytes=settings.upload_max_file_bytes,
+        max_pdf_pages=settings.upload_max_pdf_pages, max_chars=settings.upload_max_chars,
+        max_chunks=settings.upload_max_chunks,
+    )
 
 
 @router.post(
@@ -218,13 +333,15 @@ def get_knowledge_document(document_id: int, db: Session = Depends(get_db)):
         )
         for c in chunks[:PREVIEW_CHUNKS]
     ]
+    uploader = db.get(User, document.uploaded_by) if document.uploaded_by else None
     return AdminDocumentDetail(
         id=document.id, title=document.title, source=document.source, source_type=document.source_type,
         original_filename=document.original_filename, uploaded_by=document.uploaded_by,
         chunk_count=len(chunks), embedding_models=used_models,
         stale=any(m != settings.embedding_model for m in used_models),
         updated_at=document.updated_at, size_bytes=document.size_bytes, created_at=document.created_at,
-        preview=preview,
+        preview=preview, uploaded_by_email=uploader.email if uploader else None,
+        sections=[ChunkPreview(chunk_index=c.chunk_index, content=c.content) for c in chunks],
     )
 
 
@@ -255,11 +372,6 @@ def delete_knowledge_document(
 
 
 @router.get("/stats", response_model=AdminStats)
-def stats(db: Session = Depends(get_db)):
-    def total(model) -> int:
-        return db.scalar(select(func.count()).select_from(model))
-
-    return AdminStats(
-        users=total(User), conversations=total(Conversation), messages=total(Message),
-        documents=total(Document), chunks=total(Chunk),
-    )
+def stats(range: StatsRange = Query("7d", description="today, 7d or 30d"), db: Session = Depends(get_db)):
+    """The overview's numbers. Days start at midnight in STORE_TIMEZONE."""
+    return AdminStats(**q.stats(db, range))

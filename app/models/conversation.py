@@ -16,6 +16,8 @@ class Conversation(Base):
     __table_args__ = (
         # Who resolved it is only kept while it is resolved
         CheckConstraint("resolved_by IS NULL OR resolved_at IS NOT NULL", name="resolved_by_needs_resolved_at"),
+        # A resolved conversation always records when it was last resolved
+        CheckConstraint("resolved_at IS NULL OR last_resolved_at IS NOT NULL", name="resolved_has_last_resolved_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -28,6 +30,10 @@ class Conversation(Base):
     # customer writes again (it needs attention again)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # When it was last resolved, kept when the customer writes again, so only
+    # "couldn't answer" replies after it count towards needing attention.
+    # Reopening by hand clears it, so the earlier ones count again.
+    last_resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Two links to users (the customer, and who resolved it), so each names its column
     user: Mapped["User"] = relationship(back_populates="conversations", foreign_keys=[user_id])

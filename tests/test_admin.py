@@ -119,7 +119,7 @@ def test_admin_responses_never_include_password_hashes(client, admin, conversati
 def test_users_list_has_only_safe_fields(client, admin):
     user = client.get("/admin/users", headers=admin).json()["items"][0]
 
-    assert set(user) == {"id", "email", "role", "created_at"}
+    assert set(user) == {"id", "email", "role", "created_at", "conversation_count", "last_active"}
 
 
 def test_conversations_show_owner_and_message_count(client, admin, conversation_id):
@@ -170,7 +170,11 @@ def test_stats_count_everything(client, admin, conversation_id, add_document):
 
     stats = client.get("/admin/stats", headers=admin).json()
 
-    assert stats == {"users": 2, "conversations": 1, "messages": 2, "documents": 1, "chunks": 2}
+    # The overview's numbers (see test_admin_api.py for the details)
+    assert stats["conversations"] == 1
+    assert (stats["questions"], stats["answered"]) == (1, 1)
+    assert stats["knowledge"]["documents"] == 1
+    assert stats["customers"] == 1  # the admin isn't a customer
 
 
 def test_admin_requests_are_logged_without_content(client, admin, caplog):

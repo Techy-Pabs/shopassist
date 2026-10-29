@@ -198,6 +198,7 @@ docker run --rm python:3.13-slim python -c "import secrets; print(secrets.token_
 | `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES` | No | `20971520` (20 MB) | Largest a Word file may be once unpacked (a .docx is a zip file) |
 | `UPLOAD_MAX_CHARS` | No | `60000` | Most characters of text in one upload |
 | `UPLOAD_MAX_CHUNKS` | No | `64` | Most chunks in one upload. 64 fits in one embedding request. |
+| `STORE_TIMEZONE` | No | `UTC` | The store's time zone, as an IANA name such as `Africa/Lagos`. The admin dashboard's days start and end at midnight here ("today", and the conversations-per-day chart). An unknown name stops the app at startup with a clear error. |
 | `ALLOWED_ORIGINS` | No | `http://localhost:5173` | Browser origins allowed to call the API, comma separated (the frontend's address). `*` is rejected. |
 
 PostgreSQL only reads `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` the first time it creates its data. If you change them later, reset the database with `docker compose down -v` (this deletes all data) and start again.
@@ -470,24 +471,35 @@ Every user is a `customer` (the default) or an `admin` (the store owner and staf
 
 ### Admin endpoints
 
-All need an admin's token. Everything is read only except uploading and deleting knowledge documents.
+All need an admin's token. They feed the admin dashboard. Everything is read only except uploading and deleting knowledge documents, and resolving or reopening conversations.
 
 | Method | Path | What it returns |
 |---|---|---|
-| GET | `/admin/users` | Users (id, email, role, created_at), newest first |
-| GET | `/admin/conversations` | All conversations, newest first, with the owner's email and message count. Optional `user_id` filter (an unknown id returns an empty list). |
-| GET | `/admin/conversations/{conversation_id}/messages` | Any conversation's messages, oldest first. `404` if it doesn't exist. |
-| GET | `/admin/knowledge/documents` | Knowledge documents with source type (`folder` or `upload`), original file name, uploader, chunk count, the embedding model(s) used, and a `stale` flag when they don't match `EMBEDDING_MODEL` |
+| GET | `/admin/stats?range=today\|7d\|30d` | The overview's numbers for the range (default `7d`): conversations started (and in the same length of time before), customer questions and replies that answered them, conversations needing attention right now (split into couldn't answer and unanswered), knowledge documents with the latest update, customers, and conversations per day for the chart. Days start at midnight in `STORE_TIMEZONE`. "Answered" counts every reply that wasn't "couldn't answer", so replies saved before outcomes existed (no outcome) count as answered. |
+| GET | `/admin/conversations` | Conversations, newest activity first, with the customer's email, message count, last activity and status (`open`, `needs_attention` or `resolved`, and why it needs attention). `filter=all\|attention\|resolved`, `q` (searches customer questions and emails) and `user_id`. Includes each tab's count. |
+| GET | `/admin/conversations/{conversation_id}` | One conversation: every message with its outcome and the documents it was answered from, and a summary of the customer (account date, conversations, questions asked, couldn't answer, a few earlier conversations). `404` if it doesn't exist. |
+| GET | `/admin/conversations/{conversation_id}/messages` | Any conversation's messages, oldest first, paged. `404` if it doesn't exist. |
+| POST | `/admin/conversations/{conversation_id}/resolve` and `/reopen` | Mark it resolved, or needing attention again |
+| GET | `/admin/users` | Every account (customers and admins), newest first, with conversation count and last activity. `q` searches the email. |
+| GET | `/admin/knowledge/documents` | Knowledge documents with source type (`folder` or `upload`), original file name, uploader and their email, section (chunk) count, the embedding model(s) used, and a `stale` flag when they don't match `EMBEDDING_MODEL`. `source_type=all\|folder\|upload` and `q` (title or file name), with each filter's count. |
+| GET | `/admin/knowledge/limits` | What the upload form accepts: file types and the upload limits, from the settings |
 | POST | `/admin/knowledge/documents` | Upload a document (multipart: `file`, optional `title`). Returns `201` with the document, its chunk count and the embedding requests used. See [Uploading documents](#uploading-documents). |
-| GET | `/admin/knowledge/documents/{document_id}` | One document with a preview of its first three chunks. `404` if it doesn't exist. |
+| GET | `/admin/knowledge/documents/{document_id}` | One document with every section in full and a short preview of its first three. `404` if it doesn't exist. |
 | DELETE | `/admin/knowledge/documents/{document_id}` | Delete an uploaded document and its chunks (`204`). Files from `knowledge/` return `409`. |
-| GET | `/admin/stats` | Totals for users, conversations, messages, documents and chunks |
+
+**Needs attention** means: not resolved, and either the latest customer message has no reply (unanswered), or a reply couldn't answer since the conversation was last resolved. A customer writing again reopens a resolved conversation, but only new "couldn't answer" replies count; reopening by hand counts the earlier ones again.
+
+**"Answered from"** lists the documents found for each reply, best match first. Documents included in every reply (the contact details) are left out, so they don't appear on every message.
+
+Searches match anywhere, ignore case, and are sent to the database as parameters, never pasted into SQL. Counts and the chart come from aggregate queries; every list runs the same few queries however many rows it has (tests check this).
 
 Lists are paginated with `limit` (default 20, at most 100; more is rejected with `422`) and `offset`, and return:
 
 ```json
 {"items": [...], "total": 42, "limit": 20, "offset": 0}
 ```
+
+The conversation and document lists also return `counts` for their tabs or filters.
 
 **Privacy:** admins can read customers' conversations. That is expected for a store's support team, and customers should be told so in the store's privacy policy. Password hashes are never returned by any endpoint, admin or not.
 
@@ -587,6 +599,7 @@ The tables are created on the first start, when the container runs the migration
 | `RAG_TOP_K` | No | Defaults to `4` |
 | `RAG_MIN_SIMILARITY` | No | Defaults to `0.30` |
 | `RAG_ALWAYS_INCLUDE` | No | Defaults to `contact` |
+| `STORE_TIMEZONE` | Recommended | `Africa/Lagos` for the demo store. Defaults to `UTC`. |
 | `ALLOWED_ORIGINS` | For the frontend | The frontend's exact address, `https://shopassist-five.vercel.app` for the demo. See [Deploying the frontend](#deploying-the-frontend). Never `*`. |
 | `UPLOAD_MAX_FILE_BYTES`, `UPLOAD_MAX_PDF_PAGES`, `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES`, `UPLOAD_MAX_CHARS`, `UPLOAD_MAX_CHUNKS` | No | Upload limits; the defaults are 5 MB, 200, 20 MB, 60,000 and 64 |
 
