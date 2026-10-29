@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 
 import { AppRoutes } from '../Root.jsx'
+import { ATTENTION, STATS } from '../test/adminFixtures.js'
 import { callsTo, fakeFetch } from '../test/fakeApi.js'
 import { setMobile } from '../test/setup.js'
 import { PLEX_FONTS_URL } from './look.js'
@@ -10,12 +11,11 @@ import { ADMIN_TOKEN_KEY } from './session.jsx'
 
 const ADMIN = { status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', created_at: '2026-10-02T09:00:00Z' } }
 const CUSTOMER = { status: 200, body: { id: 2, email: 'chioma@example.com', role: 'customer', created_at: '2026-10-12T09:00:00Z' } }
-const STATS = { status: 200, body: { needs_attention: { total: 5, couldnt_answer: 3, unanswered: 2 } } }
 const ENDED = { status: 401, body: { detail: 'Could not validate credentials' } }
 
 function open(path, routes = {}, { token = 'admin-token' } = {}) {
   if (token) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token)
-  const fetch = fakeFetch({ 'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, ...routes })
+  const fetch = fakeFetch({ 'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, ...routes })
   const user = userEvent.setup()
   render(
     <MemoryRouter initialEntries={[path]}>

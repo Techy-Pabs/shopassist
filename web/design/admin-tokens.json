@@ -453,6 +453,26 @@
         "usage": "The chart's height."
       },
       {
+        "name": "chart-basis",
+        "value": "480px",
+        "usage": "The chart section's basis beside the needs-attention list."
+      },
+      {
+        "name": "attention-basis",
+        "value": "340px",
+        "usage": "The needs-attention list's basis beside the chart."
+      },
+      {
+        "name": "grid-card",
+        "value": "220px",
+        "usage": "The narrowest key number card on the overview (its grid fits as many as this allows)."
+      },
+      {
+        "name": "prompt-basis",
+        "value": "360px",
+        "usage": "The upload prompt's text basis beside its button."
+      },
+      {
         "name": "badge",
         "value": "20px",
         "usage": "A count badge's height."
@@ -511,6 +531,11 @@
         "name": "icon",
         "value": "18px",
         "usage": "Nav and button icons."
+      },
+      {
+        "name": "icon-sm",
+        "value": "16px",
+        "usage": "The warning icon on the needs-attention card."
       },
       {
         "name": "icon-lg",

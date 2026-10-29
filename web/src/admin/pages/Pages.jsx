@@ -1,23 +1,29 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router'
 
 import { store } from '../../config/store.js'
 import { usePageTitle } from '../look.js'
 
 // Every admin page starts with this. After moving to a page, focus goes to
-// its heading, so screen readers announce where they are.
-export function PageHeader({ title, description }) {
+// its heading, so screen readers announce where they are (in the same update
+// that shows the page, so the heading never appears unfocused). Children (such as
+// controls) sit to the right. On a phone the header bar already shows the
+// page's name, so a page can keep its heading for screen readers only.
+export function PageHeader({ title, description, children, srOnly = false }) {
   const heading = useRef(null)
   usePageTitle(title)
-  useEffect(() => {
+  useLayoutEffect(() => {
     heading.current?.focus()
   }, [title])
   return (
-    <header className="flex flex-col gap-sa-1">
-      <h1 ref={heading} tabIndex={-1} className="m-0 text-sa-title outline-none">
-        {title}
-      </h1>
-      {description && <p className="m-0 text-sa-ink-muted">{description}</p>}
+    <header className="flex flex-wrap items-end justify-between gap-sa-4">
+      <div className={srOnly ? 'sr-only' : 'flex flex-col gap-sa-1'}>
+        <h1 ref={heading} tabIndex={-1} className="m-0 text-sa-title outline-none">
+          {title}
+        </h1>
+        {description && <p className="m-0 text-sa-ink-muted">{description}</p>}
+      </div>
+      {children}
     </header>
   )
 }
@@ -33,10 +39,6 @@ function Placeholder({ title, description }) {
     </div>
   )
 }
-
-export const OverviewPage = () => (
-  <Placeholder title="Overview" description={`How your assistant is doing for ${store.name} customers.`} />
-)
 
 export const ConversationsPage = () => <Placeholder title="Conversations" />
 

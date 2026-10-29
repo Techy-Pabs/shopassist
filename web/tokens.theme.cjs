@@ -168,14 +168,20 @@ function buildTheme(tokens, admin = null) {
     // Added to Tailwind's numbered columns (grid-cols-2 stays): grids that fit
     // as many columns as their minimum width allows, as in the homepage mockups
     extend: {
-      gridTemplateColumns: Object.fromEntries(
-        ['service', 'collection', 'product', 'card', 'footer'].map((name) => {
-          const min = size[`grid-${name}`]
-          // A missing token would quietly give "minmax(undefined, 1fr)"
-          if (!min) throw new Error(`tokens.json has no size token grid-${name}`)
-          return [`fit-${name}`, `repeat(auto-fit, minmax(${min}, 1fr))`]
-        }),
-      ),
+      gridTemplateColumns: {
+        ...Object.fromEntries(
+          ['service', 'collection', 'product', 'card', 'footer'].map((name) => {
+            const min = size[`grid-${name}`]
+            // A missing token would quietly give "minmax(undefined, 1fr)"
+            if (!min) throw new Error(`tokens.json has no size token grid-${name}`)
+            return [`fit-${name}`, `repeat(auto-fit, minmax(${min}, 1fr))`]
+          }),
+        ),
+        // The admin overview's key numbers: grid-cols-sa-fit-card
+        ...(admin ? { 'sa-fit-card': `repeat(auto-fit, minmax(${size['sa-grid-card']}, 1fr))` } : {}),
+      },
+      // Sections sharing a row in a ratio, as in the admin overview (grow-3 and grow-2)
+      flexGrow: { 2: '2', 3: '3' },
     },
   }
 }

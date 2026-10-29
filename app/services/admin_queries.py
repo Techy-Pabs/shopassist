@@ -203,6 +203,7 @@ def stats(db: Session, range_name: str) -> dict:
 
     return {
         "range": range_name,
+        "time_zone": settings.store_timezone,
         "since": since,
         "conversations": conversations,
         "previous_conversations": previous,

@@ -41,10 +41,13 @@
   body[data-app='admin'] {
     background-color: theme('colors.sa-ground');
   }
-  .sa-root a {
+  /* As heavy as one class, no more: enough to beat the store's own link
+     colour, while a link's colour class (a nav item in ink, a button in
+     white) still wins, because utilities come later */
+  .sa-root :where(a) {
     color: theme('colors.sa-accent');
   }
-  .sa-root a:hover {
+  .sa-root :where(a:hover) {
     color: theme('colors.sa-ink');
   }
   .sa-root :focus-visible {

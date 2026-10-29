@@ -199,6 +199,9 @@ class DayCount(BaseModel):
 
 class AdminStats(BaseModel):
     range: StatsRange
+    # The store's time zone (STORE_TIMEZONE), an IANA name like "Africa/Lagos":
+    # the dashboard shows days and times in it
+    time_zone: str
     # Start of the range: midnight in the store's time zone (STORE_TIMEZONE)
     since: datetime
     # Conversations started in the range, and in the same length of time before it

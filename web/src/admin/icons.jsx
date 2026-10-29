@@ -1,8 +1,8 @@
 // The admin dashboard's line icons, from the admin mockups. Decorative:
 // every one sits next to text or inside a labelled button.
-function Icon({ children, className = 'h-sa-icon w-sa-icon shrink-0' }) {
+function Icon({ children, className = 'h-sa-icon w-sa-icon shrink-0', strokeWidth = '1.6' }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden="true">
       {children}
     </svg>
   )
@@ -59,5 +59,25 @@ export const MenuIcon = () => (
 export const CloseIcon = () => (
   <Icon className="h-sa-icon-lg w-sa-icon-lg">
     <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+)
+
+export const WarningIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="1.8">
+    <path d="M12 4l9 16H3z" />
+    <path d="M12 10v4M12 17v.5" />
+  </Icon>
+)
+
+export const ChevronIcon = () => (
+  <Icon strokeWidth="1.8">
+    <path d="M9 6l6 6-6 6" />
+  </Icon>
+)
+
+export const DocumentIcon = () => (
+  <Icon className="h-sa-icon-lg w-sa-icon-lg shrink-0">
+    <path d="M5 4h10l4 4v12H5z" />
+    <path d="M15 4v4h4M8 12h8M8 16h6" />
   </Icon>
 )

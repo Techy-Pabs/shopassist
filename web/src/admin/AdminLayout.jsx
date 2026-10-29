@@ -24,8 +24,10 @@ const initials = (name) =>
     .join('')
     .slice(0, 2)
 
-const rowLink =
-  'flex h-sa-control-lg items-center gap-sa-2.5 rounded-sa-md px-sa-2.5 text-sa-ink no-underline hover:bg-sa-surface-muted'
+// One colour class per state: with two, the one later in the CSS wins
+const row = 'flex h-sa-control-lg items-center gap-sa-2.5 rounded-sa-md px-sa-2.5 no-underline'
+const rowLink = `${row} text-sa-ink hover:bg-sa-surface-muted`
+const currentRowLink = `${row} bg-sa-accent-tint font-semibold text-sa-accent hover:text-sa-accent`
 
 // How many conversations need attention, for the badge beside Conversations
 function useAttentionCount() {
@@ -77,11 +79,7 @@ function Nav({ attention, onNavigate }) {
           to={to}
           end={end}
           onClick={onNavigate}
-          className={({ isActive }) =>
-            isActive
-              ? `${rowLink} bg-sa-accent-tint font-semibold text-sa-accent hover:bg-sa-accent-tint`
-              : rowLink
-          }
+          className={({ isActive }) => (isActive ? currentRowLink : rowLink)}
         >
           <Icon />
           <span className="flex-1">{label}</span>

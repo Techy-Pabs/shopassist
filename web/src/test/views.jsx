@@ -9,6 +9,7 @@ import { MemoryRouter } from 'react-router'
 import { ADMIN_TOKEN_KEY } from '../admin/session.jsx'
 import App from '../App.jsx'
 import { AppRoutes } from '../Root.jsx'
+import { ATTENTION, STATS, conversationsBody, statsBody } from './adminFixtures.js'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
 import { setMobile } from './setup.js'
@@ -41,13 +42,12 @@ function signedIn(routes = {}) {
 // The admin dashboard at /admin, with a fake API answering as this account
 const ADMIN_ME = { status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', created_at: '2026-10-02T09:00:00Z' } }
 const CUSTOMER_ME = { status: 200, body: { id: 2, email: 'chioma@example.com', role: 'customer', created_at: '2026-10-12T09:00:00Z' } }
-const STATS = { status: 200, body: { needs_attention: { total: 5, couldnt_answer: 3, unanswered: 2 } } }
 
-function admin(me, path = '/admin') {
+function admin(me, path = '/admin', routes = {}) {
   return {
     routes: () => {
       if (me) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
-      return { 'GET /auth/me': me, 'GET /admin/stats': STATS }
+      return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, ...routes }
     },
     render: (fetchImpl) => (
       <MemoryRouter initialEntries={[path]}>
@@ -81,6 +81,56 @@ export const VIEWS = {
     ...admin(ADMIN_ME, '/admin/knowledge'),
     reach: async () => {},
     ready: () => screen.findByRole('heading', { level: 1, name: 'Knowledge' }),
+  },
+  overview: {
+    ...admin(ADMIN_ME),
+    reach: async () => {},
+    ready: () => screen.findByRole('link', { name: /Do you sell silk evening gowns/ }),
+  },
+  'overview, last 30 days': {
+    ...admin(ADMIN_ME, '/admin', {
+      'GET /admin/stats': {
+        status: 200,
+        body: statsBody({
+          range: '30d', since: '2026-09-29T00:00:00+01:00',
+          per_day: Array.from({ length: 30 }, (_, i) => ({ day: new Date(Date.UTC(2026, 8, 29 + i)).toISOString().slice(0, 10), conversations: i % 4 })),
+        }),
+      },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('img', { name: /^Bar chart/ }),
+  },
+  'overview loading': {
+    ...admin(ADMIN_ME, '/admin', { 'GET /admin/stats': () => deferred().promise, 'GET /admin/conversations': () => deferred().promise }),
+    reach: async () => {},
+    ready: () => screen.findByText('Loading the overview…'),
+  },
+  'overview error': {
+    ...admin(ADMIN_ME, '/admin', {
+      'GET /admin/stats': { status: 500, body: { detail: 'Something went wrong.' } },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: "We couldn't load the overview" }),
+  },
+  'overview, new store': {
+    ...admin(ADMIN_ME, '/admin', {
+      'GET /admin/stats': {
+        status: 200,
+        body: statsBody({
+          conversations: 0, previous_conversations: 0, questions: 0, answered: 0, customers: 0,
+          needs_attention: { total: 0, couldnt_answer: 0, unanswered: 0 },
+          per_day: statsBody().per_day.map((d) => ({ ...d, conversations: 0 })),
+        }),
+      },
+      'GET /admin/conversations': { status: 200, body: conversationsBody([]) },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: 'No conversations yet' }),
+  },
+  'overview, nothing needs attention': {
+    ...admin(ADMIN_ME, '/admin', { 'GET /admin/conversations': { status: 200, body: conversationsBody([]) } }),
+    reach: async () => {},
+    ready: () => screen.findByText('No conversations need your attention'),
   },
   'admin menu open': {
     ...admin(ADMIN_ME),

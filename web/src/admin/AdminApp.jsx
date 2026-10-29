@@ -3,9 +3,8 @@ import { Route, Routes } from 'react-router'
 import AdminLayout from './AdminLayout.jsx'
 import { Checking, NotAllowed, SignIn, Unreachable } from './Gates.jsx'
 import { useAdminLook } from './look.js'
-import {
-  ConversationPage, ConversationsPage, CustomersPage, KnowledgePage, NotFoundPage, OverviewPage,
-} from './pages/Pages.jsx'
+import OverviewPage from './pages/OverviewPage.jsx'
+import { ConversationPage, ConversationsPage, CustomersPage, KnowledgePage, NotFoundPage } from './pages/Pages.jsx'
 import { AdminSessionProvider, useAdminSession } from './session.jsx'
 
 // The admin dashboard, at /admin. Loaded only when an admin address is

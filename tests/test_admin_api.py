@@ -218,6 +218,8 @@ def test_today_starts_at_midnight_in_the_store_time_zone(client, admin, around_m
     assert (lagos["conversations"], utc["conversations"], new_york["conversations"]) == (2, 1, 0)
     assert lagos["since"] == "2026-10-20T00:00:00+01:00"
     assert new_york["since"] == "2026-10-20T00:00:00-04:00"
+    # The dashboard shows days and times in the zone the API names
+    assert (lagos["time_zone"], utc["time_zone"], new_york["time_zone"]) == ("Africa/Lagos", "UTC", "America/New_York")
     assert chart(lagos) == {"2026-10-20": 2}
 
 

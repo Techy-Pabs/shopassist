@@ -44,4 +44,6 @@ export function scrollPastHero(past = true) {
 afterEach(() => {
   mobile = false
   window.sessionStorage.clear()
+  // A test's page title must not carry over into the next test
+  document.title = ''
 })
