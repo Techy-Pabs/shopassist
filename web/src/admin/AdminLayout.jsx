@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router'
+import { Link, NavLink, useLocation, useMatch } from 'react-router'
 
 import { store } from '../config/store.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
@@ -7,6 +7,7 @@ import {
   CloseIcon, ConversationsIcon, CustomersIcon, KnowledgeIcon, MenuIcon, OpenStoreIcon, OverviewIcon, SignOutIcon,
 } from './icons.jsx'
 import { useAdminSession } from './session.jsx'
+import { StoreStatsProvider, useStoreStats } from './storeStats.jsx'
 
 const PAGES = [
   { to: '/admin', label: 'Overview', icon: OverviewIcon, end: true },
@@ -28,22 +29,6 @@ const initials = (name) =>
 const row = 'flex h-sa-control-lg items-center gap-sa-2.5 rounded-sa-md px-sa-2.5 no-underline'
 const rowLink = `${row} text-sa-ink hover:bg-sa-surface-muted`
 const currentRowLink = `${row} bg-sa-accent-tint font-semibold text-sa-accent hover:text-sa-accent`
-
-// How many conversations need attention, for the badge beside Conversations
-function useAttentionCount() {
-  const { api } = useAdminSession()
-  const [count, setCount] = useState(null)
-  useEffect(() => {
-    let cancelled = false
-    api.request('GET', '/admin/stats').then((result) => {
-      if (!cancelled && result.ok) setCount(result.data.needs_attention.total)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [api])
-  return count
-}
 
 function Mark() {
   return (
@@ -199,23 +184,38 @@ function PhoneHeader({ attention }) {
   )
 }
 
-export default function AdminLayout({ children }) {
+function Layout({ children }) {
   const isMobile = useIsMobile()
-  const attention = useAttentionCount()
+  const { attention } = useStoreStats()
+  // Conversations fills the window edge to edge: its list, thread and
+  // customer panel each scroll on their own
+  const fullBleed = useMatch('/admin/conversations/*')
   if (isMobile) {
     return (
       <div className="min-h-dvh">
         <PhoneHeader attention={attention} />
-        <main className="p-sa-4">{children}</main>
+        <main className={fullBleed ? '' : 'p-sa-4'}>{children}</main>
       </div>
     )
   }
   return (
     <div className="flex min-h-dvh">
       <Sidebar attention={attention} />
-      <main className="min-w-0 flex-1 px-sa-10 pb-sa-12 pt-sa-7">
-        <div className="mx-auto max-w-sa-content">{children}</div>
-      </main>
+      {fullBleed ? (
+        <main className="flex h-dvh min-w-0 flex-1 flex-col">{children}</main>
+      ) : (
+        <main className="min-w-0 flex-1 px-sa-10 pb-sa-12 pt-sa-7">
+          <div className="mx-auto max-w-sa-content">{children}</div>
+        </main>
+      )}
     </div>
+  )
+}
+
+export default function AdminLayout({ children }) {
+  return (
+    <StoreStatsProvider>
+      <Layout>{children}</Layout>
+    </StoreStatsProvider>
   )
 }

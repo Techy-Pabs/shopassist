@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link } from 'react-router'
 
 import { store } from '../../config/store.js'
 import { usePageTitle } from '../look.js'
@@ -38,13 +38,6 @@ function Placeholder({ title, description }) {
       </div>
     </div>
   )
-}
-
-export const ConversationsPage = () => <Placeholder title="Conversations" />
-
-export function ConversationPage() {
-  const { conversationId } = useParams()
-  return <Placeholder title={`Conversation ${conversationId}`} />
 }
 
 export const KnowledgePage = () => (

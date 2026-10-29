@@ -18,13 +18,39 @@ const dayFormat = (options) => (day) => new Intl.DateTimeFormat('en-GB', { timeZ
 export const weekday = dayFormat({ weekday: 'short' }) // "Thu"
 export const dayAndMonth = dayFormat({ day: 'numeric', month: 'short' }) // "29 Oct"
 
+const clock = (moment, timeZone) =>
+  new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(moment))
+
+// "12 Oct 2026", the day a moment falls on in the store
+export const longDate = (moment, timeZone) =>
+  dayFormat({ day: 'numeric', month: 'short', year: 'numeric' })(storeDay(moment, timeZone))
+
+// The day in words: "Today", "Yesterday", "Mon 26 Oct" this week, "21 Oct"
+// this year, "21 Oct 2025" before
+function dayName(moment, timeZone, now) {
+  const day = storeDay(moment, timeZone)
+  const age = daysBetween(day, storeDay(now, timeZone))
+  if (age === 0) return 'Today'
+  if (age === 1) return 'Yesterday'
+  if (age > 1 && age < 7) return `${weekday(day)} ${dayAndMonth(day)}`
+  return day.slice(0, 4) === storeDay(now, timeZone).slice(0, 4) ? dayAndMonth(day) : longDate(moment, timeZone)
+}
+
+// Above a day's messages: "Today, 14:22"
+export const dayAndTime = (moment, { timeZone, now = new Date() }) => `${dayName(moment, timeZone, now)}, ${clock(moment, timeZone)}`
+
+// In a sentence: "today at 14:22", "on Mon 26 Oct at 10:00"
+export function startedAt(moment, { timeZone, now = new Date() }) {
+  const name = dayName(moment, timeZone, now)
+  const day = name === 'Today' || name === 'Yesterday' ? name.toLowerCase() : `on ${name}`
+  return `${day} at ${clock(moment, timeZone)}`
+}
+
 // When something last happened, as a list shows it: "14:22" today,
 // "Mon" this week, "29 Oct" before that
 export function shortTime(moment, { timeZone, now = new Date() }) {
   const age = daysBetween(storeDay(moment, timeZone), storeDay(now, timeZone))
-  if (age === 0) {
-    return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(moment))
-  }
+  if (age === 0) return clock(moment, timeZone)
   const day = storeDay(moment, timeZone)
   return age > 0 && age < 7 ? weekday(day) : dayAndMonth(day)
 }

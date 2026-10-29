@@ -9,7 +9,7 @@ import { MemoryRouter } from 'react-router'
 import { ADMIN_TOKEN_KEY } from '../admin/session.jsx'
 import App from '../App.jsx'
 import { AppRoutes } from '../Root.jsx'
-import { ATTENTION, STATS, conversationsBody, statsBody } from './adminFixtures.js'
+import { ATTENTION, DETAIL, STATS, conversation, conversationsBody, detailBody, statsBody } from './adminFixtures.js'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
 import { setMobile } from './setup.js'
@@ -47,7 +47,7 @@ function admin(me, path = '/admin', routes = {}) {
   return {
     routes: () => {
       if (me) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
-      return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, ...routes }
+      return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/7': DETAIL, ...routes }
     },
     render: (fetchImpl) => (
       <MemoryRouter initialEntries={[path]}>
@@ -131,6 +131,65 @@ export const VIEWS = {
     ...admin(ADMIN_ME, '/admin', { 'GET /admin/conversations': { status: 200, body: conversationsBody([]) } }),
     reach: async () => {},
     ready: () => screen.findByText('No conversations need your attention'),
+  },
+  conversations: {
+    ...admin(ADMIN_ME, '/admin/conversations?filter=attention', {
+      'GET /admin/conversations': { status: 200, body: { ...ATTENTION.body, total: 45 } },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('navigation', { name: 'Pages' }),
+  },
+  'conversation open': {
+    ...admin(ADMIN_ME, '/admin/conversations/7'),
+    reach: async () => {},
+    ready: () => screen.findByRole('link', { name: 'Add to knowledge' }),
+  },
+  'conversation resolved': {
+    ...admin(ADMIN_ME, '/admin/conversations/7', {
+      'GET /admin/conversations/7': {
+        status: 200,
+        body: detailBody({ conversation: conversation({ status: 'resolved', attention_reason: null, resolved_at: '2026-10-29T09:00:00Z' }) }),
+      },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('button', { name: 'Reopen' }),
+  },
+  'conversation resolve failed': {
+    ...admin(ADMIN_ME, '/admin/conversations/7', {
+      'POST /admin/conversations/7/resolve': { status: 500, body: { detail: 'Something went wrong.' } },
+    }),
+    reach: async (user) => {
+      await user.click(await screen.findByRole('button', { name: 'Mark as resolved' }))
+    },
+    ready: () => screen.findByText(/We couldn't mark this conversation as resolved/),
+  },
+  'conversations loading': {
+    ...admin(ADMIN_ME, '/admin/conversations/7', {
+      'GET /admin/conversations': () => deferred().promise, 'GET /admin/conversations/7': () => deferred().promise,
+    }),
+    reach: async () => {},
+    ready: () => screen.findByText('Loading the conversation…'),
+  },
+  'conversations errors': {
+    ...admin(ADMIN_ME, '/admin/conversations/7', {
+      'GET /admin/conversations': { status: 500, body: { detail: 'Something went wrong.' } },
+      'GET /admin/conversations/7': { status: 500, body: { detail: 'Something went wrong.' } },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: "We couldn't load this conversation" }),
+  },
+  'conversation not found': {
+    ...admin(ADMIN_ME, '/admin/conversations/99', {
+      'GET /admin/conversations/99': { status: 404, body: { detail: 'Conversation not found' } },
+      'GET /admin/conversations': { status: 200, body: conversationsBody([]) },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: 'Conversation not found' }),
+  },
+  'conversations, no search results': {
+    ...admin(ADMIN_ME, '/admin/conversations?q=kaftan', { 'GET /admin/conversations': { status: 200, body: conversationsBody([]) } }),
+    reach: async () => {},
+    ready: () => screen.findByRole('button', { name: 'Clear search' }),
   },
   'admin menu open': {
     ...admin(ADMIN_ME),

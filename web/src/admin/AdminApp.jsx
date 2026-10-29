@@ -3,8 +3,9 @@ import { Route, Routes } from 'react-router'
 import AdminLayout from './AdminLayout.jsx'
 import { Checking, NotAllowed, SignIn, Unreachable } from './Gates.jsx'
 import { useAdminLook } from './look.js'
+import ConversationsPage from './pages/ConversationsPage.jsx'
 import OverviewPage from './pages/OverviewPage.jsx'
-import { ConversationPage, ConversationsPage, CustomersPage, KnowledgePage, NotFoundPage } from './pages/Pages.jsx'
+import { CustomersPage, KnowledgePage, NotFoundPage } from './pages/Pages.jsx'
 import { AdminSessionProvider, useAdminSession } from './session.jsx'
 
 // The admin dashboard, at /admin. Loaded only when an admin address is
@@ -19,8 +20,8 @@ function Gate() {
     <AdminLayout>
       <Routes>
         <Route index element={<OverviewPage />} />
-        <Route path="conversations" element={<ConversationsPage />} />
-        <Route path="conversations/:conversationId" element={<ConversationPage />} />
+        {/* One route, so opening a conversation keeps the list as it is */}
+        <Route path="conversations/:conversationId?" element={<ConversationsPage />} />
         <Route path="knowledge" element={<KnowledgePage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="*" element={<NotFoundPage />} />

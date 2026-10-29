@@ -428,6 +428,31 @@
         "usage": "The conversation list beside a thread."
       },
       {
+        "name": "list-basis",
+        "value": "360px",
+        "usage": "The conversation list's basis beside a thread."
+      },
+      {
+        "name": "list-max",
+        "value": "400px",
+        "usage": "The widest the conversation list gets."
+      },
+      {
+        "name": "thread-basis",
+        "value": "420px",
+        "usage": "A conversation thread's basis."
+      },
+      {
+        "name": "panel-basis",
+        "value": "240px",
+        "usage": "The customer panel's basis (it grows to panel)."
+      },
+      {
+        "name": "search",
+        "value": "320px",
+        "usage": "The search box in a page header."
+      },
+      {
         "name": "panel",
         "value": "280px",
         "usage": "The customer panel."

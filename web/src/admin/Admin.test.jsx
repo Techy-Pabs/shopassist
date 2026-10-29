@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 
 import { AppRoutes } from '../Root.jsx'
-import { ATTENTION, STATS } from '../test/adminFixtures.js'
+import { ATTENTION, DETAIL, STATS } from '../test/adminFixtures.js'
 import { callsTo, fakeFetch } from '../test/fakeApi.js'
 import { setMobile } from '../test/setup.js'
 import { PLEX_FONTS_URL } from './look.js'
@@ -15,7 +15,9 @@ const ENDED = { status: 401, body: { detail: 'Could not validate credentials' } 
 
 function open(path, routes = {}, { token = 'admin-token' } = {}) {
   if (token) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token)
-  const fetch = fakeFetch({ 'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, ...routes })
+  const fetch = fakeFetch({
+    'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/42': DETAIL, ...routes,
+  })
   const user = userEvent.setup()
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -40,7 +42,7 @@ describe('routes', () => {
   it.each([
     ['/admin', 'Overview'],
     ['/admin/conversations', 'Conversations'],
-    ['/admin/conversations/42', 'Conversation 42'],
+    ['/admin/conversations/42', 'Conversations'],
     ['/admin/knowledge', 'Knowledge'],
     ['/admin/customers', 'Customers'],
   ])('%s shows the admin layout with its page', async (path, title) => {

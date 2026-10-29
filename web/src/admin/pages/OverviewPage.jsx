@@ -1,11 +1,11 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router'
 
 import { store } from '../../config/store.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
 import { count, dayAndMonth, daysAgo, shortTime, weekday } from '../format.js'
 import { ChevronIcon, DocumentIcon, WarningIcon } from '../icons.jsx'
-import { useAdminSession } from '../session.jsx'
+import { useLoad } from '../useLoad.js'
 import { PageHeader } from './Pages.jsx'
 
 // The date ranges /admin/stats knows, with how the page names them
@@ -16,28 +16,6 @@ const RANGES = [
 ]
 
 const ATTENTION_LINK = '/admin/conversations?filter=attention'
-const NO_ANSWER = "ShopAssist didn't answer. It may be waking up after a quiet spell, so try again in a moment."
-
-// Loads a path from the API, again whenever it changes or Try again is
-// pressed. Moving on cancels the request before, and a reply that still
-// arrives for it is ignored, so an older reply never replaces a newer one.
-function useLoad(path) {
-  const { api } = useAdminSession()
-  const [state, setState] = useState({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
-  useEffect(() => {
-    const controller = new AbortController()
-    setState({ status: 'loading' })
-    api.request('GET', path, { signal: controller.signal }).then((result) => {
-      if (controller.signal.aborted) return
-      if (result.ok) setState({ status: 'ready', data: result.data })
-      // A 401 already returns to sign in
-      else if (result.kind !== 'session-ended') setState({ status: 'error', message: result.kind === 'network' ? NO_ANSWER : result.message })
-    })
-    return () => controller.abort()
-  }, [api, path, attempt])
-  return { ...state, retry: () => setAttempt((n) => n + 1) }
-}
 
 // Every day of the range, oldest first, with 0 for any day the API left
 // out. "since" is midnight in the store's time zone ("2026-10-23T00:00:00+01:00"),

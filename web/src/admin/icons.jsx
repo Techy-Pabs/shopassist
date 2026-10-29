@@ -81,3 +81,28 @@ export const DocumentIcon = () => (
     <path d="M15 4v4h4M8 12h8M8 16h6" />
   </Icon>
 )
+
+export const SearchIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="1.8">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-4-4" />
+  </Icon>
+)
+
+export const CheckIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="1.8">
+    <path d="M5 12l5 5L20 7" />
+  </Icon>
+)
+
+export const ReopenIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="1.8">
+    <path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4" />
+  </Icon>
+)
+
+export const BackIcon = () => (
+  <Icon strokeWidth="1.8">
+    <path d="M15 6l-6 6 6 6" />
+  </Icon>
+)
