@@ -36,6 +36,21 @@
     }
   }
 
+  /* The admin dashboard (src/admin): ShopAssist's own look, from
+     admin-tokens.json. Its links and focus ring use the green accent. */
+  body[data-app='admin'] {
+    background-color: theme('colors.sa-ground');
+  }
+  .sa-root a {
+    color: theme('colors.sa-accent');
+  }
+  .sa-root a:hover {
+    color: theme('colors.sa-ink');
+  }
+  .sa-root :focus-visible {
+    outline-color: theme('colors.sa-accent');
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

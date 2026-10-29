@@ -1,0 +1,540 @@
+{
+  "name": "ShopAssist admin",
+  "version": 1,
+  "about": "The admin dashboard's design system, taken from web/design/mockups/admin. ShopAssist's own look, separate from the store's (tokens.json). Tailwind names get the prefix below, so they can never collide with the store's: the colour 'accent' is the class bg-sa-accent, the spacing 'space-4' is p-sa-4.",
+  "tailwindPrefix": "sa-",
+  "color": {
+    "tokens": [
+      {
+        "name": "ground",
+        "value": {
+          "light": "#F4F4F1"
+        },
+        "usage": "Page background: a cool off-white."
+      },
+      {
+        "name": "surface",
+        "value": {
+          "light": "#FFFFFF"
+        },
+        "usage": "Cards, panels, the sidebar and tables."
+      },
+      {
+        "name": "surface-muted",
+        "value": {
+          "light": "#FAFAF8"
+        },
+        "usage": "Quiet fills inside a surface, such as the store chip."
+      },
+      {
+        "name": "surface-sunken",
+        "value": {
+          "light": "#EEEFEA"
+        },
+        "usage": "Neutral chips and placeholders."
+      },
+      {
+        "name": "ink",
+        "value": {
+          "light": "#17201C"
+        },
+        "usage": "Main text, the selected range button and avatars."
+      },
+      {
+        "name": "ink-muted",
+        "value": {
+          "light": "#58625C"
+        },
+        "usage": "Secondary text and labels (5.9:1 on ground)."
+      },
+      {
+        "name": "ink-soft",
+        "value": {
+          "light": "#3E4742"
+        },
+        "usage": "Body text in long passages."
+      },
+      {
+        "name": "line",
+        "value": {
+          "light": "#DFE0DA"
+        },
+        "usage": "Borders of surfaces, inputs and the sidebar."
+      },
+      {
+        "name": "line-soft",
+        "value": {
+          "light": "#ECEDE8"
+        },
+        "usage": "Row dividers inside tables and lists."
+      },
+      {
+        "name": "line-strong",
+        "value": {
+          "light": "#8F948C"
+        },
+        "usage": "Outlined buttons and the upload drop zone."
+      },
+      {
+        "name": "accent",
+        "value": {
+          "light": "#135E4B"
+        },
+        "usage": "The deep green accent: primary buttons, links, the current page, focus ring."
+      },
+      {
+        "name": "accent-tint",
+        "value": {
+          "light": "#E3EFEA"
+        },
+        "usage": "The current page's background in the sidebar; accent chips."
+      },
+      {
+        "name": "accent-line",
+        "value": {
+          "light": "#C3DBD1"
+        },
+        "usage": "Borders of accent panels."
+      },
+      {
+        "name": "accent-wash",
+        "value": {
+          "light": "#F1F6F3"
+        },
+        "usage": "A selected list row."
+      },
+      {
+        "name": "accent-faint",
+        "value": {
+          "light": "#FBFDFC"
+        },
+        "usage": "A success message's background."
+      },
+      {
+        "name": "attention",
+        "value": {
+          "light": "#7A4300"
+        },
+        "usage": "Amber text for 'needs attention'."
+      },
+      {
+        "name": "attention-tint",
+        "value": {
+          "light": "#FCEFD9"
+        },
+        "usage": "Amber badges and chips."
+      },
+      {
+        "name": "attention-line",
+        "value": {
+          "light": "#E9C98F"
+        },
+        "usage": "Borders of amber panels."
+      },
+      {
+        "name": "attention-wash",
+        "value": {
+          "light": "#FFFBF3"
+        },
+        "usage": "Amber panels' background."
+      },
+      {
+        "name": "danger",
+        "value": {
+          "light": "#A1271D"
+        },
+        "usage": "Destructive actions (delete)."
+      },
+      {
+        "name": "danger-ink",
+        "value": {
+          "light": "#8E1F16"
+        },
+        "usage": "'Unanswered' and error text."
+      },
+      {
+        "name": "danger-tint",
+        "value": {
+          "light": "#F8E1DE"
+        },
+        "usage": "Red badges and chips."
+      },
+      {
+        "name": "danger-line",
+        "value": {
+          "light": "#E3B0A9"
+        },
+        "usage": "Borders of error panels."
+      },
+      {
+        "name": "danger-wash",
+        "value": {
+          "light": "#FDF3F1"
+        },
+        "usage": "Error panels' background."
+      },
+      {
+        "name": "overlay",
+        "value": {
+          "light": "rgba(23, 32, 28, .45)"
+        },
+        "usage": "Behind a dialog."
+      }
+    ]
+  },
+  "type": {
+    "families": {
+      "sans": "\"IBM Plex Sans\", system-ui, sans-serif",
+      "mono": "\"IBM Plex Mono\", monospace"
+    },
+    "groups": [
+      {
+        "name": "Sans",
+        "family": "sans",
+        "styles": [
+          {
+            "name": "title",
+            "fontSize": "24px",
+            "lineHeight": "32px",
+            "fontWeight": 600,
+            "usage": "Page headings."
+          },
+          {
+            "name": "heading-lg",
+            "fontSize": "18px",
+            "lineHeight": "26px",
+            "fontWeight": 600,
+            "usage": "Panel headings."
+          },
+          {
+            "name": "heading",
+            "fontSize": "16px",
+            "lineHeight": "24px",
+            "fontWeight": 600,
+            "usage": "The ShopAssist name and section headings."
+          },
+          {
+            "name": "lead",
+            "fontSize": "15px",
+            "lineHeight": "22px",
+            "fontWeight": 400,
+            "usage": "Message text in a conversation."
+          },
+          {
+            "name": "body",
+            "fontSize": "14px",
+            "lineHeight": "20px",
+            "fontWeight": 400,
+            "usage": "Body text, nav items, table cells."
+          },
+          {
+            "name": "small",
+            "fontSize": "13px",
+            "lineHeight": "18px",
+            "fontWeight": 400,
+            "usage": "Buttons, filters and secondary text."
+          },
+          {
+            "name": "caption",
+            "fontSize": "12px",
+            "lineHeight": "16px",
+            "fontWeight": 400,
+            "usage": "Labels, badges, times and the role under a name."
+          },
+          {
+            "name": "micro",
+            "fontSize": "11px",
+            "lineHeight": "16px",
+            "fontWeight": 600,
+            "usage": "Initials in small avatars."
+          },
+          {
+            "name": "overline",
+            "fontSize": "11px",
+            "lineHeight": "16px",
+            "fontWeight": 600,
+            "letterSpacing": ".04em",
+            "usage": "Small capital labels (with uppercase)."
+          }
+        ]
+      },
+      {
+        "name": "Mono",
+        "family": "mono",
+        "styles": [
+          {
+            "name": "figure",
+            "fontSize": "30px",
+            "lineHeight": "36px",
+            "fontWeight": 500,
+            "usage": "Key numbers on the overview."
+          },
+          {
+            "name": "figure-md",
+            "fontSize": "28px",
+            "lineHeight": "32px",
+            "fontWeight": 500,
+            "usage": "The needs-attention number on a phone."
+          },
+          {
+            "name": "figure-sm",
+            "fontSize": "24px",
+            "lineHeight": "30px",
+            "fontWeight": 500,
+            "usage": "Key numbers on a phone."
+          }
+        ]
+      }
+    ]
+  },
+  "spacing": {
+    "tokens": [
+      {
+        "name": "space-0-25",
+        "value": "1px",
+        "usage": "Badge padding."
+      },
+      {
+        "name": "space-0-5",
+        "value": "2px",
+        "usage": "Gaps between nav items."
+      },
+      {
+        "name": "space-0-75",
+        "value": "3px",
+        "usage": "Inside the range switch."
+      },
+      {
+        "name": "space-1",
+        "value": "4px",
+        "usage": "Small gaps."
+      },
+      {
+        "name": "space-1-5",
+        "value": "6px",
+        "usage": "Badge padding."
+      },
+      {
+        "name": "space-2",
+        "value": "8px",
+        "usage": "Gaps and small padding."
+      },
+      {
+        "name": "space-2-5",
+        "value": "10px",
+        "usage": "Nav item padding and icon gaps."
+      },
+      {
+        "name": "space-3",
+        "value": "12px",
+        "usage": "Sidebar and card padding."
+      },
+      {
+        "name": "space-3-5",
+        "value": "14px",
+        "usage": "Card padding on a phone."
+      },
+      {
+        "name": "space-4",
+        "value": "16px",
+        "usage": "Card and header padding."
+      },
+      {
+        "name": "space-4-5",
+        "value": "18px",
+        "usage": "Panel padding."
+      },
+      {
+        "name": "space-5",
+        "value": "20px",
+        "usage": "Sidebar and panel padding."
+      },
+      {
+        "name": "space-5-5",
+        "value": "22px",
+        "usage": "Panel padding."
+      },
+      {
+        "name": "space-6",
+        "value": "24px",
+        "usage": "Gaps between page parts."
+      },
+      {
+        "name": "space-7",
+        "value": "28px",
+        "usage": "Page top padding."
+      },
+      {
+        "name": "space-10",
+        "value": "40px",
+        "usage": "Page side padding."
+      },
+      {
+        "name": "space-12",
+        "value": "48px",
+        "usage": "Page bottom padding."
+      }
+    ]
+  },
+  "radius": {
+    "tokens": [
+      {
+        "name": "radius-sm",
+        "value": "4px",
+        "usage": "Buttons inside the range switch; chart bars' top corners."
+      },
+      {
+        "name": "radius-md",
+        "value": "6px",
+        "usage": "Buttons, inputs, nav items and the mark."
+      },
+      {
+        "name": "radius-lg",
+        "value": "8px",
+        "usage": "Cards and panels."
+      },
+      {
+        "name": "radius-pill",
+        "value": "999px",
+        "usage": "Badges, avatars and chips."
+      }
+    ]
+  },
+  "size": {
+    "tokens": [
+      {
+        "name": "sidebar",
+        "value": "232px",
+        "usage": "The sidebar's width."
+      },
+      {
+        "name": "sidebar-min",
+        "value": "200px",
+        "usage": "The narrowest the sidebar gets."
+      },
+      {
+        "name": "main-basis",
+        "value": "560px",
+        "usage": "The main area's basis beside the sidebar."
+      },
+      {
+        "name": "content",
+        "value": "1120px",
+        "usage": "The widest page content."
+      },
+      {
+        "name": "list",
+        "value": "320px",
+        "usage": "The conversation list beside a thread."
+      },
+      {
+        "name": "panel",
+        "value": "280px",
+        "usage": "The customer panel."
+      },
+      {
+        "name": "panel-sm",
+        "value": "260px",
+        "usage": "A narrower side panel."
+      },
+      {
+        "name": "dialog",
+        "value": "400px",
+        "usage": "The delete confirmation's width."
+      },
+      {
+        "name": "bubble",
+        "value": "72%",
+        "usage": "The widest a message gets."
+      },
+      {
+        "name": "chart",
+        "value": "200px",
+        "usage": "The chart's height."
+      },
+      {
+        "name": "badge",
+        "value": "20px",
+        "usage": "A count badge's height."
+      },
+      {
+        "name": "badge-min",
+        "value": "22px",
+        "usage": "A count badge's narrowest width."
+      },
+      {
+        "name": "avatar-sm",
+        "value": "24px",
+        "usage": "The store chip's initials."
+      },
+      {
+        "name": "avatar",
+        "value": "28px",
+        "usage": "The admin's initial and the mark."
+      },
+      {
+        "name": "avatar-lg",
+        "value": "32px",
+        "usage": "The admin's initial on a phone."
+      },
+      {
+        "name": "control-sm",
+        "value": "28px",
+        "usage": "Small buttons."
+      },
+      {
+        "name": "control",
+        "value": "32px",
+        "usage": "Range switch buttons."
+      },
+      {
+        "name": "control-md",
+        "value": "36px",
+        "usage": "Icon buttons and inputs."
+      },
+      {
+        "name": "control-lg",
+        "value": "40px",
+        "usage": "Nav items, buttons and inputs."
+      },
+      {
+        "name": "touch",
+        "value": "44px",
+        "usage": "The smallest target on a phone."
+      },
+      {
+        "name": "control-xl",
+        "value": "48px",
+        "usage": "The store chip and primary buttons."
+      },
+      {
+        "name": "icon",
+        "value": "18px",
+        "usage": "Nav and button icons."
+      },
+      {
+        "name": "icon-lg",
+        "value": "22px",
+        "usage": "The phone menu icon."
+      }
+    ]
+  },
+  "shadow": {
+    "tokens": [
+      {
+        "name": "shadow-selected",
+        "value": "inset 3px 0 0 #135E4B",
+        "usage": "The accent bar on a selected list row."
+      }
+    ]
+  },
+  "border": {
+    "tokens": [
+      {
+        "name": "border-dashed",
+        "value": "1.5px",
+        "usage": "The upload drop zone's dashed border."
+      }
+    ]
+  }
+}

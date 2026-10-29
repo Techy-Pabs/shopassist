@@ -4,7 +4,11 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { MemoryRouter } from 'react-router'
+
+import { ADMIN_TOKEN_KEY } from '../admin/session.jsx'
 import App from '../App.jsx'
+import { AppRoutes } from '../Root.jsx'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
 import { setMobile } from './setup.js'
@@ -34,7 +38,58 @@ function signedIn(routes = {}) {
 }
 
 // Each view: how to reach it, and a sign that it has rendered
+// The admin dashboard at /admin, with a fake API answering as this account
+const ADMIN_ME = { status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', created_at: '2026-10-02T09:00:00Z' } }
+const CUSTOMER_ME = { status: 200, body: { id: 2, email: 'chioma@example.com', role: 'customer', created_at: '2026-10-12T09:00:00Z' } }
+const STATS = { status: 200, body: { needs_attention: { total: 5, couldnt_answer: 3, unanswered: 2 } } }
+
+function admin(me, path = '/admin') {
+  return {
+    routes: () => {
+      if (me) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
+      return { 'GET /auth/me': me, 'GET /admin/stats': STATS }
+    },
+    render: (fetchImpl) => (
+      <MemoryRouter initialEntries={[path]}>
+        <AppRoutes fetchImpl={fetchImpl} />
+      </MemoryRouter>
+    ),
+  }
+}
+
 export const VIEWS = {
+  'admin sign in': {
+    ...admin(null),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: 'Sign in to the dashboard' }),
+  },
+  'admin not allowed': {
+    ...admin(CUSTOMER_ME),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: 'This area is for store admins' }),
+  },
+  'admin unreachable': {
+    ...admin(null),
+    routes: () => {
+      window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
+      return { 'GET /auth/me': () => new TypeError('Failed to fetch') }
+    },
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { name: "We couldn't reach ShopAssist" }),
+  },
+  'admin shell': {
+    ...admin(ADMIN_ME, '/admin/knowledge'),
+    reach: async () => {},
+    ready: () => screen.findByRole('heading', { level: 1, name: 'Knowledge' }),
+  },
+  'admin menu open': {
+    ...admin(ADMIN_ME),
+    reach: async (user) => {
+      await user.click(await screen.findByRole('button', { name: 'Open menu' }))
+    },
+    mobileOnly: true,
+    ready: () => screen.findByRole('navigation', { name: 'Admin' }),
+  },
   homepage: {
     routes: () => ({}),
     reach: async () => {},
@@ -127,7 +182,8 @@ export async function showView(name, device) {
   if (device === 'mobile') setMobile(true)
   if (view.fakeTimers) vi.useFakeTimers({ shouldAdvanceTime: true })
   const user = userEvent.setup(view.fakeTimers ? { advanceTimers: vi.advanceTimersByTime } : {})
-  render(<App fetchImpl={fakeFetch(view.routes())} />)
+  const fetchImpl = fakeFetch(view.routes())
+  render(view.render ? view.render(fetchImpl) : <App fetchImpl={fetchImpl} />)
 
   await view.reach(user)
   await view.ready()

@@ -1,4 +1,4 @@
-import { buildTheme, loadTokens } from './tokens.theme.cjs'
+import { buildTheme, loadAdminTokens, loadTokens } from './tokens.theme.cjs'
 
 const tokens = loadTokens()
 const theme = buildTheme(tokens)
@@ -50,5 +50,32 @@ describe('the homepage additions', () => {
   it('builds the auto-fit grids from the grid size tokens, keeping the numbered columns', () => {
     expect(theme.extend.gridTemplateColumns['fit-collection']).toBe('repeat(auto-fit, minmax(280px, 1fr))')
     expect(theme.gridTemplateColumns).toBeUndefined() // not replaced, so grid-cols-2 still exists
+  })
+})
+
+describe('the admin dashboard tokens', () => {
+  const admin = loadAdminTokens()
+  const withAdmin = buildTheme(tokens, admin)
+
+  it('are added with the sa- prefix', () => {
+    expect(withAdmin.colors['sa-accent']).toBe('#135E4B')
+    expect(withAdmin.fontSize['sa-title']).toEqual(['24px', { lineHeight: '32px', fontWeight: '600' }])
+    expect(withAdmin.fontFamily['sa-mono']).toEqual(['"IBM Plex Mono"', 'monospace'])
+    expect(withAdmin.spacing['sa-2.5']).toBe('10px')
+    expect(withAdmin.width['sa-sidebar']).toBe('232px')
+    expect(withAdmin.borderRadius['sa-md']).toBe('6px')
+  })
+
+  it("never collide with the store's tokens, which are unchanged", () => {
+    for (const key of ['colors', 'fontSize', 'spacing', 'size', 'borderRadius', 'boxShadow', 'borderWidth']) {
+      const added = Object.keys(withAdmin[key]).filter((k) => !(k in theme[key]))
+      expect(added.every((k) => k.startsWith('sa-'))).toBe(true)
+      for (const k of Object.keys(theme[key])) expect(withAdmin[key][k]).toEqual(theme[key][k])
+    }
+  })
+
+  it('refuses an admin token whose prefixed name the store already uses', () => {
+    const clashing = { ...admin, tailwindPrefix: '', color: { tokens: [{ name: 'indigo', value: { light: '#000000' } }] } }
+    expect(() => buildTheme(tokens, clashing)).toThrow("Admin token names collide with the store's colors: indigo")
   })
 })
