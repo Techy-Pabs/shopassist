@@ -1,18 +1,176 @@
 # ShopAssist
 
-ShopAssist is the backend for an online store's customer support chatbot. Customers create an account, log in, open a conversation and ask questions about orders, shipping, returns, payments and products. An AI assistant replies using the store's own information (shipping, returns, payments, sizing and so on), and every conversation is saved in PostgreSQL. It is built for small online stores that want an AI support assistant they can run themselves. The engine is store agnostic: all store knowledge lives in Markdown files, so serving a different store means swapping those files and one setting. The AI provider can also be swapped without touching the rest of the code.
+ShopAssist is an AI customer support assistant for small online stores. Customers ask questions in a chat on the store's website (about delivery, returns, payments, sizes and products) and get an answer straight away, at any time of day. The assistant answers only from the store's own information, so it doesn't make up prices or policies. When it doesn't know, it says so and gives the store's contact details.
 
-This repository covers the first five milestones: a working, tested REST API (Milestone 1), a knowledge base that grounds the assistant's answers in the store's information using retrieval augmented generation, or RAG (Milestone 2), an admin role with admin only endpoints for the store's staff (Milestone 3), uploading PDF, Word, text and Markdown documents into the knowledge base without redeploying (Milestone 4), and a chat website for customers (Milestone 5). It runs locally with Docker Compose; the API is deployed on Render and the website on Vercel. The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
+The store owner gets a dashboard that shows how the assistant is doing and, above all, **what to fix**. Questions the assistant couldn't answer are flagged; the owner adds a document that covers them, and the assistant can answer next time.
 
-**Live demo:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app), the Loom & Lane homepage with the chat widget. Click **Ask Loom & Lane**, create an account and ask a question.
+The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
 
-**API:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs), the interactive API documentation.
+## Live demo
 
-The demo runs on free hosting that goes to sleep after 15 minutes without traffic, so the first request can take about a minute while it wakes up. AI replies come from free models with a shared daily limit. Each customer message uses two free requests (one to search the knowledge base, one for the reply), so the demo handles roughly 25 messages a day across all visitors, and the assistant may sometimes answer with a `502` "unavailable" message.
+- **The store and its chat:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app). Click **Ask Loom & Lane**, create an account and ask a question, for example "How long does delivery to Abuja take?" or "Can I return earrings?".
+- **The admin dashboard:** [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin). Only the store's admins can sign in, and demo admin accounts aren't handed out, so visitors see the sign in screen. The screenshots below show what's behind it.
+- **The API:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs), the interactive API documentation, for developers.
+
+The demo runs on free hosting that goes to sleep after 15 minutes without traffic, so the first request can take about a minute while it wakes up. AI replies come from free models with a shared daily limit. Each customer message uses two free requests (one to search the knowledge base, one for the reply), so the demo handles roughly 25 messages a day across all visitors, and the assistant may sometimes answer with an "unavailable" message.
+
+## What it does
+
+**For customers**
+
+- A chat on the store's website that works on a phone and a computer
+- Answers about delivery, returns, payments, sizes and products, taken from the store's own information
+- Past conversations are kept, so a customer can pick up where they left off
+
+**For the store owner**
+
+- **Overview:** conversations, questions answered, what needs attention, and conversations per day
+- **Conversations:** every conversation, with the replies the assistant couldn't answer flagged, and the documents each answer came from
+- **Knowledge:** everything the assistant answers from. Upload PDF, Word, text or Markdown documents, preview them, and delete them, without a developer or a redeploy
+- **Customers:** every account, how many conversations they've had and when they were last active
+
+## Screenshots
+
+The screenshots use sample data: every name and email address in them is made up.
+
+**Overview.** The key numbers for the last 7 days, the conversations per day, and the three conversations that need attention.
+
+![The Overview page: 17 conversations, 13 of 18 questions answered, 3 needing attention, 9 knowledge documents, a conversations per day chart and the list of conversations needing attention](docs/screenshots/overview.webp)
+
+**Conversations.** A question the assistant couldn't answer, with the document it searched ("Answered from"), the customer's details, and **Mark as resolved**.
+
+![The Conversations page: the list of conversations on the left, a conversation marked "Couldn't answer" in the middle with an "Add to knowledge" prompt, and the customer's details on the right](docs/screenshots/conversations.webp)
+
+**Knowledge.** Every document the assistant answers from, with the preview of an uploaded Word document, in the sections the assistant searches.
+
+![The Knowledge page: the table of documents, built in and uploaded, with the preview panel open on an uploaded document showing its three sections and a Delete button](docs/screenshots/knowledge-preview.webp)
+
+**Customers.** Every account, searchable by email. A customer's email opens their conversations.
+
+![The Customers page: a table of 14 accounts with role, conversations, last active and joined date](docs/screenshots/customers.webp)
+
+**On a phone.** The dashboard works on a phone too: the sidebar becomes a menu, and every button is big enough to tap.
+
+<img src="docs/screenshots/overview-phone.webp" width="320" alt="The Overview page on a phone: the date range switch, the needs attention card, four key numbers and the list of conversations needing attention">
+
+## Admin dashboard
+
+The dashboard is at `/admin` on the store's website. It belongs to ShopAssist rather than to the store, so it has its own plain look and shows the store's name.
+
+### The pages
+
+- **Overview** (`/admin`). Choose **Today**, **Last 7 days** or **Last 30 days**. Four key numbers: conversations (compared with the same length of time before), questions answered out of all customer questions, conversations that need your attention (split into "couldn't answer" and "unanswered"), and knowledge documents with when they were last updated. Each number opens the page behind it. Below them are the conversations per day (also described in text for screen readers), the conversations that need attention, and a prompt to upload a document that covers what the assistant couldn't answer.
+- **Conversations** (`/admin/conversations`). The list of conversations beside the one you're reading, and the customer's details beside that. The tabs show **All**, **Needs attention** or **Resolved**, and the search finds a word in customers' questions or their email address. Each reply shows **Couldn't answer** when the assistant didn't have the information, and **Answered from** with the documents it used; each document opens its preview. **Mark as resolved** clears a conversation from the attention list once you've dealt with it, and **Reopen** puts it back. A customer writing again in a resolved conversation reopens it. When a reply couldn't answer, **Add to knowledge** takes you to the Knowledge page. On a phone, the list and the conversation are separate screens.
+- **Knowledge** (`/admin/knowledge`). Every document the assistant answers from: the **built in** ones (the store's own files in `knowledge/`, changed by a developer) and the **uploaded** ones. Filter and search them, then drag a file onto the page or use **Upload document**. The accepted file types and the size limit shown on the page come from the server's settings. **Preview** shows a document in the sections the assistant searches. Uploaded documents can be deleted, after a confirmation; built in ones can't. Each upload uses one request from the free AI quota.
+- **Customers** (`/admin/customers`). Every account, with its role, number of conversations, last activity and the date it joined, searchable by email, 20 to a page. A customer's email opens their conversations. Passwords are never shown, and nobody can be made an admin from here (see below).
+
+Searches, tabs and pages are kept in the address, for example `/admin/conversations?filter=attention`, so the browser's back button and a bookmark work as you'd expect. The numbers are loaded when a page opens; they don't update by themselves while you look at it.
+
+### Signing in, and who can see it
+
+Admins sign in at `/admin` with the same email and password they'd use in the store's chat. After sign in, the dashboard checks the account's role: an admin sees the dashboard, and a customer sees "This area is for store admins" with a link back to the store.
+
+That check is only there to give a clear message. **The real gate is the API:** every admin endpoint checks the role in the database on every request and refuses anyone who isn't an admin, whatever the browser does.
+
+The sign in lasts for the browser tab only (it's kept in `sessionStorage`, separately from the chat's), so closing the tab signs you out. Sign ins expire after 30 minutes by default (`JWT_EXPIRE_MINUTES`), and the dashboard then returns to the sign in screen.
+
+### Making someone an admin
+
+There is no admin sign up, and the dashboard can't make anyone an admin, so a stolen customer account can't give itself admin access. The person first creates a normal account (in the store's chat, or with **POST /auth/register**), and then a developer promotes it with a command. The command only changes existing accounts, never creates them, and it shows which database it is connected to and asks for confirmation before changing anything.
+
+**Locally:**
+
+```bash
+docker compose exec api python -m app.cli.users promote owner@example.com
+docker compose exec api python -m app.cli.users demote owner@example.com
+```
+
+Add `--yes` to skip the confirmation. Demoting the last admin is allowed, with a warning. The change takes effect on the person's next request; they don't need to sign in again.
+
+**On Render (the live database on Neon).** Render's free tier has no shell, so the command runs on your own machine against Neon. The Neon connection string contains the database password, so it must not end up in a file, and that includes your shell history: typed into a command, it would be saved there. Instead, read it into a variable without displaying it, and pass the variable through:
+
+```bash
+# 1. Make sure your local image has the latest code
+docker compose build api
+
+# 2. Paste the Neon connection string when the cursor waits, then press Enter.
+#    Nothing is shown, and the string is not saved in your history.
+read -rs NEON_URL
+
+# 3. Run the command against Neon. "-e DATABASE_URL" with no value copies the
+#    variable from your shell, so the connection string never appears in the
+#    command line either.
+DATABASE_URL="$NEON_URL" docker compose run --rm --no-deps -e DATABASE_URL api \
+    python -m app.cli.users promote owner@example.com
+
+# 4. Forget the connection string
+unset NEON_URL
+```
+
+Before changing anything, step 3 prints the database it is connected to, such as `Database: ep-....neon.tech/neondb`. Answer `y` only if that is your Neon host. If the variable is empty (for example, nothing was pasted at step 2), the command stops with an error saying `DATABASE_URL is empty` and nothing changes; run step 2 again.
+
+**Known limitation:** there is no email verification yet, so anyone could register with any email address. Register your own account before promoting it, and check the email in the confirmation prompt.
+
+### How "Couldn't answer" works, and its limits
+
+Every reply the assistant writes is saved with an outcome: **answered**, or **couldn't answer** (`no_info` in the database). The dashboard uses it to flag the questions the store's information doesn't cover.
+
+The assistant is told that when the store's information doesn't cover a question, its reply must begin with exactly "I don't have information". A reply counts as "couldn't answer" when:
+
+- it begins with that phrase (ignoring capitals, spaces before it, and a curly apostrophe), or
+- the knowledge base search found nothing relevant to the question, and the phrase appears anywhere in the reply.
+
+Everything else counts as answered.
+
+**This is a good guess, not a certainty.** It's reliable enough for a dashboard label, but you should know where it can be wrong:
+
+- **A refusal in other words is missed.** If the assistant says "Sorry, I'm not sure about that" instead of the agreed phrase, the reply counts as answered and the gap isn't flagged.
+- **A partial answer is flagged.** "I don't have information about gift cards, but you can pay by card or bank transfer" counts as couldn't answer, which is usually right, because the actual question wasn't answered.
+- **"Answered" doesn't mean "correct".** The label only says whether the assistant thought it had the information. A reply can still be incomplete or wrong, so read the conversations now and then, and run the [quality check](#quality-check) after changing documents.
+- **Older replies have no label.** Replies saved before this feature existed show no label, and the Overview counts them as answered.
+- **Failed replies aren't labelled.** When the AI is unavailable, no reply is saved, so the conversation shows as **Unanswered** instead.
+
+Why not ask the model to add a hidden tag such as `[NO_INFO]`? Because a customer could trick the model into writing the tag, and free models follow formatting instructions unreliably. A fixed opening phrase is easy for the model to follow and easy to check.
+
+Customers never see the label. A conversation **needs attention** when it isn't resolved and either its latest customer message has no reply (unanswered), or one of its replies couldn't answer since the conversation was last resolved.
+
+### How "Answered from" works
+
+When the assistant writes a reply, ShopAssist records which knowledge documents were put into its prompt: one entry per document, with its best match score. The dashboard lists them under the reply as **Answered from**, best match first, and each one opens that document's preview on the Knowledge page.
+
+- Only documents that matched the question are listed. The contact details are added to every reply, so they're left out; otherwise they'd appear on every message.
+- It shows what the assistant **was given**, not proof of what it **used**: a reply might rely on one listed document and ignore another.
+- A "couldn't answer" reply can still list documents. That shows what the search found, which helps you see whether the right document was missing or just didn't contain the answer.
+- The document's name is saved with the reply. If the document is deleted later, the name still appears, without a link.
+- Replies saved before this feature existed list no documents.
+
+### The store's time zone (`STORE_TIMEZONE`)
+
+`STORE_TIMEZONE` sets the time zone the dashboard works in, as an IANA name such as `Africa/Lagos` (the demo's) or `Europe/London`. It decides when "today" starts and ends, which day each conversation counts towards in the chart and the date ranges, and how every date and time in the dashboard is shown, whatever time zone the admin's own computer is in.
+
+It defaults to `UTC`, so set it to the store's own time zone: in `.env` locally, and under **Environment** on Render. A name that doesn't exist stops the API at startup with a clear error, instead of quietly showing the wrong days.
+
+## Roadmap
+
+ShopAssist was built in six milestones. **All six are done, and Project 1 is complete:** the store and its chat are live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app), and the admin dashboard at [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin).
+
+- [x] **Milestone 1, REST API:** accounts, login, conversations and AI replies, tested and documented (see [API endpoints](#api-endpoints))
+- [x] **Deployment:** live on Render with a Neon PostgreSQL database (see [Deployment](#deployment))
+- [x] **Milestone 2, knowledge base:** answer questions from the store's own policies and information (see [Knowledge base](#knowledge-base))
+- [x] **Milestone 3, admin role:** customer and admin roles, and admin only endpoints (see [Admins](#admins))
+- [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base instead of editing files (see [Uploading documents](#uploading-documents))
+- [x] **Milestone 5, chat interface:** a chat website for customers (see [Chat frontend](#chat-frontend))
+- [x] **Milestone 6, admin dashboard:** a web dashboard for the store's staff, with "couldn't answer" detection, "answered from" sources and resolving conversations (see [Admin dashboard](#admin-dashboard))
+
+## For developers
+
+The rest of this README is for developers: the [features in detail](#features), the [tech stack](#tech-stack) and [architecture](#architecture), [setup](#setup), [running the app](#running-the-app), [the tests](#running-the-tests), [the frontend](#chat-frontend), the [knowledge base](#knowledge-base), the [admin endpoints](#admins), [deployment](#deployment) and the [current limitations](#current-limitations).
+
+ShopAssist is a FastAPI backend with a React frontend. The backend is a tested REST API (Milestone 1) that grounds the assistant's answers in the store's information using retrieval augmented generation, or RAG (Milestone 2), with an admin role and admin only endpoints (Milestone 3) and document uploads into the knowledge base (Milestone 4). The frontend is one React app with the customer chat website at `/` (Milestone 5) and the admin dashboard at `/admin` (Milestone 6). It runs locally with Docker Compose; the API is deployed on Render and the website on Vercel. The engine is store agnostic: all store knowledge lives in Markdown files and uploads, so serving a different store means swapping those files and one setting. The AI provider can also be swapped without touching the rest of the code.
 
 To try the API directly, register with **POST /auth/register**, log in with **POST /auth/login** and copy the `access_token`, then click **Authorize** and paste the token. Create a conversation with **POST /conversations** and send a message to it with **POST /conversations/{conversation_id}/messages**. Questions to try: "How long does delivery to Abuja take?", "Can I return earrings?", or "Can I pay on delivery for a ₦200,000 order?".
 
-## Features
+### Features
 
 - Account registration and login, with passwords hashed using Argon2
 - JWT access tokens that protect every conversation endpoint
@@ -24,25 +182,16 @@ To try the API directly, register with **POST /auth/register**, log in with **PO
 - The store's contact details are always available to the assistant, so it can point customers to support when it doesn't know
 - If the knowledge base search fails, chat still works and directs the customer to support
 - A provider-agnostic AI layer, currently connected to OpenRouter
-- Two roles, customer and admin. Admins can list users and conversations, read any conversation, see the knowledge base and get totals, through admin only endpoints
+- Two roles, customer and admin. Admins have their own endpoints for the dashboard: totals, conversations, customers and the knowledge base
 - Admins can upload PDF, Word (.docx), text and Markdown documents into the knowledge base, see a preview of each, and delete them, with no code change or redeploy. Uploaded documents are searched exactly like the store's own files
 - Uploaded text is treated as untrusted: anything imitating the prompt's tags is removed, and the assistant is told to ignore instructions hidden in documents
+- Every reply records its outcome (answered or couldn't answer) and the documents it was answered from, and admins can resolve and reopen conversations
+- A customer chat website and an admin dashboard, in one React app, with no violations in axe accessibility checks
 - Clear error responses when the AI is slow, rate limited or unavailable
 - Database migrations with Alembic
 - Interactive API documentation (Swagger UI) at `/docs`
-- An automated test suite (251 tests) that uses its own database, a fake AI and fake embeddings, so it never touches real data or makes real AI calls
+- Automated tests (354 for the backend, 452 for the frontend) that use their own database or a fake API, a fake AI and fake embeddings, so they never touch real data or make real AI calls
 - A quality check for the knowledge base: retrieval and answer checks against a list of test questions
-
-## Roadmap
-
-Only the checked items are done. The others are planned and are **not** built yet.
-
-- [x] **Deployment:** live on Render with a Neon PostgreSQL database (see [Deployment](#deployment))
-- [x] **Milestone 2, knowledge base:** answer questions from the store's own policies and information (see [Knowledge base](#knowledge-base))
-- [x] **Milestone 3, admin role:** customer and admin roles, and read only admin endpoints (see [Admins](#admins))
-- [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base through the API, instead of editing files (see [Uploading documents](#uploading-documents))
-- [x] **Milestone 5, chat interface:** a chat website for customers, live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app) (see [Chat frontend](#chat-frontend))
-- [ ] **Milestone 6, admin dashboard:** a web interface for store staff to review conversations and the knowledge base
 
 ## Tech stack
 
@@ -56,15 +205,15 @@ Only the checked items are done. The others are planned and are **not** built ye
 | Configuration | pydantic-settings, read from environment variables or a `.env` file |
 | Testing | Pytest, FastAPI TestClient |
 | Containers | Docker, Docker Compose |
-| Frontend | React 19, Vite 7, Tailwind CSS 3.4, Vitest 3, React Testing Library, axe-core (see [Chat frontend](#chat-frontend)) |
+| Frontend | React 19, React Router 7, Vite 7, Tailwind CSS 3.4, Vitest 3, React Testing Library, axe-core (see [Chat frontend](#chat-frontend)) |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Client["Client<br/>(chat website, Swagger UI, curl)"]
-    API["FastAPI app<br/>auth, conversations, messages"]
-    DB[("PostgreSQL 16 + pgvector<br/>users, conversations, messages,<br/>documents, chunks")]
+    Client["Client<br/>(chat website, admin dashboard,<br/>Swagger UI, curl)"]
+    API["FastAPI app<br/>auth, conversations, messages, admin"]
+    DB[("PostgreSQL 16 + pgvector<br/>users, conversations, messages,<br/>message sources, documents, chunks")]
     AILayer["AI provider layer<br/>app/services/ai.py"]
     OpenRouter["OpenRouter<br/>chat model + embedding model"]
     Files["knowledge/*.md"]
@@ -76,7 +225,7 @@ flowchart LR
     Files -- "ingestion on startup" --> DB
 ```
 
-When a user sends a message, the API checks the token, confirms the conversation belongs to that user and saves the message. It then embeds the latest message (plus the previous one) through the AI layer, finds the most similar knowledge base chunks in PostgreSQL, adds them to the system prompt, sends the prompt and the last 20 messages to the AI layer, saves the reply and returns it.
+When a user sends a message, the API checks the token, confirms the conversation belongs to that user and saves the message. It then embeds the latest message (plus the previous one) through the AI layer, finds the most similar knowledge base chunks in PostgreSQL, adds them to the system prompt, sends the prompt and the last 20 messages to the AI layer, saves the reply with its outcome and the documents it was answered from, and returns it. The admin dashboard reads all of this through the `/admin` endpoints.
 
 ### Project structure
 
@@ -100,7 +249,8 @@ quality/             questions.json and a test document for the knowledge base q
 docker/db/           local PostgreSQL 16 image with pgvector
 scripts/start.sh     production start: migrations, ingestion, API
 tests/               Pytest suite
-web/                 the chat frontend, self-contained (see Chat frontend)
+web/                 the chat website and the admin dashboard, self-contained (see Chat frontend)
+docs/screenshots/    the dashboard screenshots in this README
 ```
 
 ## Security and design decisions
@@ -133,7 +283,9 @@ web/                 the chat frontend, self-contained (see Chat frontend)
 
 These reduce the risk; they don't remove it. Removing fake tags stops a document from breaking out of its section, but nothing can stop plain language instructions inside a document from being read by the AI. Only upload documents you trust, and check new ones with the quality check.
 
-**Answer outcomes are a good guess, not a certainty.** Each assistant reply is saved with an outcome, `answered` or `no_info` ("couldn't answer"), so the admin dashboard can flag questions the knowledge base doesn't cover. The prompt tells the assistant to begin a reply that can't answer with exactly "I don't have information". A reply is `no_info` if it begins with that phrase (ignoring case and leading spaces), or if the knowledge base search found nothing relevant and the phrase appears anywhere in it. A model may occasionally word a refusal differently, so a few replies may be labelled wrongly; that is acceptable for a dashboard label. We don't ask the model to output a hidden tag instead, because a customer could trick it into writing the tag, and free models follow formatting instructions unreliably. Each reply also records which knowledge documents were in its prompt (one row per document, with the best similarity; documents included in every prompt, such as the contact details, have none). If a document is deleted later, its name stays on the reply. Replies saved before this feature have no outcome and no sources. Customers never see either; they are for admins.
+**Answer outcomes are a good guess, not a certainty.** Each assistant reply is saved with an outcome, `answered` or `no_info` ("couldn't answer"), detected from a fixed opening phrase rather than a hidden tag a customer could trick the model into writing. Each reply also records which knowledge documents were in its prompt (one row in `message_sources` per document, with the best similarity; documents included in every prompt, such as the contact details, have none). See [How "Couldn't answer" works](#how-couldnt-answer-works-and-its-limits) and [How "Answered from" works](#how-answered-from-works). Customers never see either; they are for admins.
+
+**Customer text is untrusted in the dashboard.** Customers' messages, their email addresses and uploaded documents are shown in the dashboard as plain text, never as HTML, and `dangerouslySetInnerHTML` is never used, so a customer can't type a script into the chat that then runs in an admin's browser (stored XSS). Tests send `<script>` and `<img onerror>` through every page and check they appear as text. The dashboard holds no secrets; it uses the same public `VITE_API_URL` as the chat.
 
 **Knowledge base logging.** The logs record which chunks were retrieved and their similarity scores (chunk titles only), and how many texts were embedded. They never record what the customer wrote.
 
@@ -279,17 +431,19 @@ The tests:
 - replace the AI and the embedding model with fakes, so no test makes a real network call
 - cover registration, login, token checks, `/auth/me`, conversation ownership, sending messages, the 20-message history limit, AI failures and input validation
 - cover the knowledge base: chunking, ingestion (skipping unchanged files, re-embedding changed ones, removing deleted ones, retrying after a failed embedding), retrieval order and threshold, the always included contact document, the prompt's store information section, follow up search text, and chat still replying when embedding fails
-
 - cover uploads: each file type, the content checks (a renamed file is rejected), every limit, scanned and password protected PDFs, duplicates, file names, embedding failures saving nothing, detail and delete, startup ingestion never touching uploads, fake prompt tags being removed, and uploaded chunks reaching chat
 - cover the admin role: `401` and `403` on every admin endpoint, admins getting `200`, registration ignoring a role, promoting and demoting taking effect without a new token, pagination limits, no password hashes in admin responses, and the promote and demote command
+- cover the dashboard's backend: "couldn't answer" detection (the phrase at the start, anywhere when nothing relevant was found, case, spaces and curly apostrophes), the sources saved with each reply and kept when a document is deleted, resolving and reopening (and a new customer message reopening), "needs attention", the overview's numbers and per day chart in the store's time zone, the conversation and customer lists with search and paging, and search text taken literally
 
-There are 251 tests.
+There are 354 tests.
 
 Test tools (`requirements-dev.txt`) are only installed in the test image, not in the image the API runs from.
 
 ## Chat frontend
 
-`web/` is the customer facing website: the homepage of the demo store, Loom & Lane, with a chat widget in the corner. The homepage has no shop behind it, so every link scrolls to a section of the page, and its store facts (delivery, pickup, payment, sizes, returns) match the assistant's knowledge base. Customers sign in or create an account inside the widget, ask a question or tap a suggested one, read the assistant's replies, and reopen past conversations. On a phone the widget fills the screen; on a computer it floats over the page.
+`web/` is one React app with two parts: the customer facing website at `/`, and the [admin dashboard](#admin-dashboard) at `/admin`. React Router serves both, and the dashboard's code and its fonts (IBM Plex) are only downloaded when someone opens `/admin`.
+
+The website is the homepage of the demo store, Loom & Lane, with a chat widget in the corner. The homepage has no shop behind it, so every link scrolls to a section of the page, and its store facts (delivery, pickup, payment, sizes, returns) match the assistant's knowledge base. Customers sign in or create an account inside the widget, ask a question or tap a suggested one, read the assistant's replies, and reopen past conversations. On a phone the widget fills the screen; on a computer it floats over the page.
 
 It talks to the API only over HTTP and never imports backend code. It has its own `package.json`, tests and build, and nothing in `web/` refers to a file outside it, so it can move to its own repository unchanged.
 
@@ -319,7 +473,7 @@ You need two servers: the API (in Docker) and the frontend's development server 
    npm run dev
    ```
 
-3. Open **http://localhost:5173**, exactly that address.
+3. Open **http://localhost:5173**, exactly that address. The dashboard is at **http://localhost:5173/admin**; sign in with an account you've [made an admin](#making-someone-an-admin).
 
 **Why exactly that address.** The browser treats the page and the API as different sites (an "origin" is the scheme, host and port together). Before it lets the page read the API's replies, it checks the API's CORS headers, and the API only allows the origins in `ALLOWED_ORIGINS`, whose local default is `http://localhost:5173`. So:
 
@@ -350,7 +504,7 @@ npm test              # once
 npm run test:watch    # again on every change
 ```
 
-The 160 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. They cover:
+The 452 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. For the chat website, they cover:
 
 - signing in, creating an account, wrong passwords, the server's validation messages, and a `401` on any call returning to sign in
 - sending: the bubble, the typing indicator and the reply; the unavailable card and **Try again**; `422` messages; a reply containing `<b>` or `<script>` shown as literal text
@@ -360,9 +514,24 @@ The 160 tests run in a simulated browser (jsdom) against a fake API, so they mak
 - accessibility: [axe](https://github.com/dequelabs/axe-core) checks of the homepage (and its open mobile menu) and every panel view at phone and desktop sizes, and animations only when the visitor hasn't asked for reduced motion
 - the design system: no colour, pixel size or one-off Tailwind value outside the tokens
 
+For the admin dashboard, they cover:
+
+- signing in, a customer seeing "This area is for store admins", a `401` returning to sign in, signing out, and an address that doesn't exist
+- every page's loading, empty and error states, with **Try again**
+- the Overview's ranges, numbers, chart description and attention list, with dates in the store's time zone
+- Conversations: tabs, search, paging, "Couldn't answer", "Answered from" (including a deleted document), resolving and reopening, and the separate phone screens
+- Knowledge: filters and search, uploading (by button and by dropping a file, its progress, and every error), the preview, and deleting with its confirmation
+- Customers: the table, search, paging, and an email opening that customer's conversations
+- searches, tabs and pages kept in the address, so back, refresh and bookmarks work
+- customer text and documents with `<script>` and `<img onerror>` shown as literal text on every page
+- focus: each page's heading on arrival, dialogs that keep focus inside and return it, and focus kept on **Next** while a page loads
+- accessibility: axe on every dashboard page and dialog at phone and desktop sizes, and 44px touch targets on phones
+
 ### Accessibility approach
 
 Accessibility is checked in three ways. The test suite runs axe on the homepage and every panel view, at phone and desktop sizes, so a regression fails the tests. The simulated browser can't measure colour contrast, so axe is also run in real Chrome, contrast included, on every screen at 1280x800 and 390x844 (no violations). And a keyboard only pass goes through the whole journey in real Chrome (open, sign in, a suggestion, send, history, back, sign out and **Escape**), checking at every stop that focus lands in the right place, shows the indigo focus ring and is on screen. Every control in the widget is a touch target of at least 44px (48px for the main controls on phones), except links inside a sentence. Animations run only when the visitor hasn't asked for reduced motion, and a test fails if one isn't guarded.
+
+The admin dashboard is checked the same way: axe in the tests and in real Chrome (contrast included) on every page and dialog at 1440x900 and 390x844, with no violations, and a keyboard only journey at both sizes: sign in, open a conversation from the attention list, mark it resolved, follow "Answered from" to the preview and close it, open and cancel an upload and a delete, search and page through customers, and sign out. Every stop has a visible focus ring, on screen. On phones every control is at least 44px.
 
 ### Design system and mockups
 
@@ -372,6 +541,8 @@ Accessibility is checked in three ways. The test suite runs axe on the homepage 
 - **Mockups.** `web/design/mockups/` holds the approved screens: the homepage on desktop and phone (`Home-Desktop`, `Home-Mobile`), the earlier storefront, the desktop chat, and sign in, welcome, conversation, error, waking and history on a phone. With the development server running, open them at, for example, `http://localhost:5173/design/mockups/Main.dc.html`. The built screens are compared with them side by side at 1280x800 and 390x844 (by eye; automated pixel comparison isn't used).
 - **Fonts.** Fraunces and Manrope, from Google Fonts.
 - **Photos.** `web/public/images/`, from Unsplash under the Unsplash License, as WebP at 640 and 1280 pixels wide. `web/public/images/CREDITS.md` lists each photo, its photographer and its Unsplash page; the footer credits the photographers. Each photo sits on its mockup's cloth pattern, which shows while it loads.
+
+- **The admin dashboard's own design.** The dashboard belongs to ShopAssist, not to Loom & Lane, so it has its own tokens in `web/design/admin-tokens.json`: IBM Plex Sans and IBM Plex Mono, a cool off white background, a deep green accent, amber for "needs attention" and red only for deleting and "unanswered". Their Tailwind names start with `sa-` (`bg-sa-surface`, `text-sa-accent`), so they can never collide with the store's, and the same tokens-only test covers them. The approved dashboard mockups are in `web/design/mockups/admin/`.
 
 Where the built screens differ from the mockups on purpose: accounts have no names, so the welcome reads "Hello, how can we help?"; a conversation's title is the customer's first words; the WhatsApp number is shown as text until a real number is configured in `web/src/config/store.js`; and there is a **Sign out** link under the message box.
 
@@ -430,7 +601,7 @@ Latest results:
 - **Retrieval:** for all 14 questions the store information covers, the expected document ranked first.
 - **Threshold:** relevant documents scored 0.415 or more, and the best match for an uncovered question scored 0.194. `RAG_MIN_SIMILARITY` is set to 0.30, roughly midway, to leave room for wording the check doesn't cover.
 - **Answers:** 5 of 5 passed (delivery to Abuja, a follow up about cost, the pay on delivery limit, laptops, and the injection attempt, which was refused).
-- **Tests:** 58 automated tests passed at the end of Milestone 2 (251 now, with the admin, upload and Milestone 5 tests).
+- **Tests:** 58 automated tests passed at the end of Milestone 2 (354 backend tests now, with the admin, upload, chat and dashboard tests).
 - **Milestone 4 (uploads):** with the test document uploaded, `upload-fact` used the real fact (₦1,500) and `upload-injection` refused the 90% discount without repeating or describing the hidden instruction; `laptops` gave the contact details without mentioning how the assistant works. All 3 passed, answered by the fallback model while the main model's provider was down.
 - **Milestone 5 (products and fabrics):** after adding the products and fabrics file and a prompt rule for products the store doesn't list, the full answer check passed 24 of 24 locally (the fallback model answered throughout, as the main model's only provider was down). Unlisted products (a silk evening gown, laptops) get "I don't have information about..." and the support contacts, never an invented price or "our". Running all 24 at once hit OpenRouter's per-minute limit (HTTP 429) after 9 replies; in batches of 5 a minute apart, it doesn't.
 
@@ -467,7 +638,7 @@ Every upload and delete is logged with the admin's id, the document id and the f
 
 ### Roles
 
-Every user is a `customer` (the default) or an `admin` (the store owner and staff). `GET /auth/me` shows your role. Admins can still chat like any customer; they can also use the admin endpoints below. Customers can never reach them.
+Every user is a `customer` (the default) or an `admin` (the store owner and staff). `GET /auth/me` shows your role. Admins can still chat like any customer; they can also use the admin endpoints below. Customers can never reach them. To make someone an admin, locally or on the live database, see [Making someone an admin](#making-someone-an-admin).
 
 ### Admin endpoints
 
@@ -502,45 +673,6 @@ Lists are paginated with `limit` (default 20, at most 100; more is rejected with
 The conversation and document lists also return `counts` for their tabs or filters.
 
 **Privacy:** admins can read customers' conversations. That is expected for a store's support team, and customers should be told so in the store's privacy policy. Password hashes are never returned by any endpoint, admin or not.
-
-### Making someone an admin
-
-There is no admin sign up. The person registers a normal account first, then it is promoted with a command. The command only changes existing accounts, never creates them, and shows which database it is connected to and asks for confirmation before changing anything.
-
-Locally:
-
-```bash
-docker compose exec api python -m app.cli.users promote owner@example.com
-docker compose exec api python -m app.cli.users demote owner@example.com
-```
-
-Add `--yes` to skip the confirmation. Demoting the last admin is allowed, with a warning.
-
-**Known limitation:** there is no email verification yet, so anyone could register with any email address. Register your own account before promoting it, and check the email in the confirmation prompt.
-
-### Promoting an admin on the live database (Neon)
-
-Render's free tier has no shell, so the command runs on your own machine against Neon. The Neon connection string contains the database password, so it must not end up in a file, and that includes your shell history: typed into a command, it would be saved there. Instead, read it into a variable without displaying it, and pass the variable through:
-
-```bash
-# 1. Make sure your local image has the latest code
-docker compose build api
-
-# 2. Paste the Neon connection string when the cursor waits, then press Enter.
-#    Nothing is shown, and the string is not saved in your history.
-read -rs NEON_URL
-
-# 3. Run the command against Neon. "-e DATABASE_URL" with no value copies the
-#    variable from your shell, so the connection string never appears in the
-#    command line either.
-DATABASE_URL="$NEON_URL" docker compose run --rm --no-deps -e DATABASE_URL api \
-    python -m app.cli.users promote owner@example.com
-
-# 4. Forget the connection string
-unset NEON_URL
-```
-
-Before changing anything, step 3 prints the database it is connected to, such as `Database: ep-....neon.tech/neondb`. Answer `y` only if that is your Neon host. If the variable is empty (for example, nothing was pasted at step 2), the command stops with an error saying `DATABASE_URL is empty` and nothing changes; run step 2 again.
 
 ## Deployment
 
@@ -634,6 +766,8 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 
 **Security headers.** `web/vercel.json` makes Vercel send a Content Security Policy and other security headers with every page. The policy lets the page load its own scripts and styles and the Google Fonts it uses, and talk only to the API. If the API ever moves, update both `VITE_API_URL` and `connect-src` in `web/vercel.json`.
 
+**Dashboard addresses.** `web/vercel.json` also rewrites every `/admin/...` address to the app, so opening or refreshing a page such as `/admin/customers?page=2` loads the dashboard instead of Vercel's 404 page. The rewrite doesn't loosen the security headers.
+
 ## API endpoints
 
 | Method | Path | Auth | Description | Responses |
@@ -654,19 +788,14 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 
 "Auth: Yes" means the request needs an `Authorization: Bearer <token>` header; "Admin" means that token must belong to an admin. User responses contain only `id`, `email`, `role` and `created_at`.
 
-## Screenshots and demo
-
-_Coming soon._
-
-- Screenshot: Swagger UI with the endpoint list
-- Screenshot: a conversation with AI replies
-- Demo video: registering, logging in and chatting with the assistant
-
 ## Current limitations
 
 - Login tokens can't be revoked before they expire, and there are no refresh tokens yet.
 - There is no email verification, so an account's email address isn't proven to belong to its owner.
-- Admin endpoints are read only, and there is no stored audit log of what admins viewed (only log lines).
+- There is no stored audit log of what admins viewed or changed (only log lines), and there is one kind of admin: every admin can do everything.
+- Admins are made with a command line tool, not from the dashboard.
+- "Couldn't answer" is a heuristic, so a few replies may be labelled wrongly (see [its limits](#how-couldnt-answer-works-and-its-limits)), and "Answered from" shows the documents the assistant was given, not proof of which it used.
+- The dashboard doesn't update live: new conversations appear when a page is opened again.
 - There is no rate limiting on login or messages.
 - Knowledge base search is by meaning only (no keyword or hybrid search, no reranking), and the assistant can't look up orders.
 - Uploads can't be edited in place: delete and upload again. Original files aren't kept, only their text.
