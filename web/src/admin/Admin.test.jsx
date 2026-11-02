@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 
 import { AppRoutes } from '../Root.jsx'
-import { ATTENTION, DETAIL, STATS } from '../test/adminFixtures.js'
+import { ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS } from '../test/adminFixtures.js'
 import { callsTo, fakeFetch } from '../test/fakeApi.js'
 import { setMobile } from '../test/setup.js'
 import { PLEX_FONTS_URL } from './look.js'
@@ -16,7 +16,8 @@ const ENDED = { status: 401, body: { detail: 'Could not validate credentials' } 
 function open(path, routes = {}, { token = 'admin-token' } = {}) {
   if (token) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token)
   const fetch = fakeFetch({
-    'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/42': DETAIL, ...routes,
+    'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/42': DETAIL,
+    'GET /admin/knowledge/documents': DOCUMENTS, 'GET /admin/knowledge/limits': LIMITS, ...routes,
   })
   const user = userEvent.setup()
   render(

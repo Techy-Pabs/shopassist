@@ -44,7 +44,9 @@ async function readJson(response) {
 export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl = (...args) => fetch(...args) }) {
   const base = String(baseUrl ?? '').replace(/\/+$/, '')
 
-  async function request(method, path, { body, auth = true, signal } = {}) {
+  // body is sent as JSON; form (a FormData, such as a file upload) as
+  // multipart, with the browser setting its Content-Type
+  async function request(method, path, { body, form, auth = true, signal } = {}) {
     const token = auth ? getToken() : null
     const headers = { Accept: 'application/json' }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -55,7 +57,7 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
       response = await fetchImpl(`${base}${path}`, {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: form ?? (body === undefined ? undefined : JSON.stringify(body)),
         signal,
       })
     } catch (error) {
@@ -78,8 +80,10 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
       return { ...failure, kind: 'unauthorized', message: typeof detail === 'string' ? detail : FALLBACK_MESSAGE }
     }
     if (response.status === 422) {
+      // A list of field errors, or one message (such as "No text could be extracted")
       const fieldErrors = fieldErrorsFrom(detail)
-      return { ...failure, kind: 'validation', fieldErrors, message: Object.values(fieldErrors)[0] ?? FALLBACK_MESSAGE }
+      const message = typeof detail === 'string' ? detail : Object.values(fieldErrors)[0] ?? FALLBACK_MESSAGE
+      return { ...failure, kind: 'validation', fieldErrors, message }
     }
     if (response.status === 502) {
       return { ...failure, kind: 'unavailable', message: typeof detail === 'string' ? detail : UNAVAILABLE_MESSAGE }

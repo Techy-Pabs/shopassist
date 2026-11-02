@@ -453,6 +453,21 @@
         "usage": "The search box in a page header."
       },
       {
+        "name": "search-sm",
+        "value": "260px",
+        "usage": "A search box in a toolbar, such as above the documents table."
+      },
+      {
+        "name": "preview",
+        "value": "560px",
+        "usage": "The document preview panel's width."
+      },
+      {
+        "name": "table-min",
+        "value": "720px",
+        "usage": "The narrowest the documents table gets (narrower screens scroll it)."
+      },
+      {
         "name": "panel",
         "value": "280px",
         "usage": "The customer panel."

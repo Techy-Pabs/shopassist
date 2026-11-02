@@ -90,3 +90,44 @@ export function detailBody(overrides = {}) {
 }
 
 export const DETAIL = { status: 200, body: detailBody() }
+
+export function adminDocument(overrides = {}) {
+  return {
+    id: 2, title: 'Products and Fabrics', source: 'products-and-fabrics.md', source_type: 'folder',
+    original_filename: null, uploaded_by: null, chunk_count: 6, embedding_models: ['nvidia/llama-nemotron-embed-vl-1b-v2:free'],
+    stale: false, updated_at: '2026-10-27T10:00:00Z', uploaded_by_email: null, ...overrides,
+  }
+}
+
+export const UPLOADED = adminDocument({
+  id: 9, title: 'Gift wrapping', source: 'gift-wrapping.md', source_type: 'upload', original_filename: 'gift-wrapping.md',
+  uploaded_by: 1, chunk_count: 2, updated_at: '2026-10-29T15:41:00Z', uploaded_by_email: 'abraham@example.com',
+})
+
+// GET /admin/knowledge/documents
+export function documentsBody(items, counts) {
+  const upload = items.filter((d) => d.source_type === 'upload').length
+  return { items, total: items.length, limit: 100, offset: 0, counts: counts ?? { all: items.length, folder: items.length - upload, upload } }
+}
+
+export const DOCUMENTS = { status: 200, body: documentsBody([UPLOADED, adminDocument(), adminDocument({ id: 3, title: 'Shipping', source: 'shipping-and-delivery.md', chunk_count: 5 })]) }
+
+// GET /admin/knowledge/documents/9: the document in its sections
+export function documentDetail(overrides = {}) {
+  const base = { ...UPLOADED, ...overrides }
+  return {
+    ...base,
+    size_bytes: 1229,
+    created_at: '2026-10-29T15:41:00Z',
+    preview: [],
+    sections: [
+      { chunk_index: 0, content: 'Gift wrapping > What we offer\n\nWe wrap any order in adire cloth for ₦2,000.' },
+      { chunk_index: 1, content: 'Gift wrapping > How to ask for it\n\nAdd a note at checkout.\nWe confirm by email.' },
+    ],
+    ...overrides,
+  }
+}
+
+export const LIMITS = {
+  status: 200, body: { accepted_types: ['.pdf', '.docx', '.txt', '.md'], max_file_bytes: 5 * 1024 * 1024, max_pdf_pages: 50, max_chars: 200000, max_chunks: 200 },
+}

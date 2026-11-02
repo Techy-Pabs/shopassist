@@ -106,3 +106,34 @@ export const BackIcon = () => (
     <path d="M15 6l-6 6 6 6" />
   </Icon>
 )
+
+export const UploadIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="2">
+    <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
+  </Icon>
+)
+
+export const DropIcon = () => (
+  <Icon className="h-sa-icon-lg w-sa-icon-lg shrink-0">
+    <path d="M7 18a4 4 0 01-.5-8A6 6 0 0118 9a4 4 0 01-1 9" />
+    <path d="M12 12v8M9 15l3-3 3 3" />
+  </Icon>
+)
+
+export const TrashIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="1.8">
+    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+  </Icon>
+)
+
+export const DismissIcon = () => (
+  <Icon className="h-sa-icon-sm w-sa-icon-sm shrink-0" strokeWidth="2">
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+)
+
+export const DoneIcon = () => (
+  <Icon className="h-sa-icon w-sa-icon shrink-0" strokeWidth="2">
+    <path d="M5 12l5 5L20 7" />
+  </Icon>
+)

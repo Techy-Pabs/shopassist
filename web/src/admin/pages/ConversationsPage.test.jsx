@@ -121,7 +121,8 @@ describe('the filter tabs', () => {
     const { fetch } = open('/admin/conversations?filter=resolved')
 
     expect(await screen.findByRole('tab', { name: /Resolved/ })).toHaveAttribute('aria-selected', 'true')
-    expect(listQuery(fetch).get('filter')).toBe('resolved')
+    // The tab shows before the page asks for the list (an effect): wait for the request
+    await waitFor(() => expect(listQuery(fetch).get('filter')).toBe('resolved'))
   })
 
   it('arrow keys, Home and End move between them; only the chosen one is in the Tab order', async () => {
@@ -191,7 +192,8 @@ describe('search', () => {
   it('a search in the address fills the box', async () => {
     const { fetch } = open('/admin/conversations?q=lagos')
     expect(await screen.findByRole('searchbox', { name: 'Search conversations' })).toHaveValue('lagos')
-    expect(listQuery(fetch).get('q')).toBe('lagos')
+    // The box shows before the page asks for the list (an effect): wait for the request
+    await waitFor(() => expect(listQuery(fetch).get('q')).toBe('lagos'))
   })
 
   it('no results says so, and offers to clear the search', async () => {

@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router'
 
-import { store } from '../../config/store.js'
 import { usePageTitle } from '../look.js'
 
 // Every admin page starts with this. After moving to a page, focus goes to
@@ -39,13 +38,6 @@ function Placeholder({ title, description }) {
     </div>
   )
 }
-
-export const KnowledgePage = () => (
-  <Placeholder
-    title="Knowledge"
-    description={`Everything the assistant knows about ${store.name}. It answers only from these documents.`}
-  />
-)
 
 export const CustomersPage = () => (
   <Placeholder title="Customers" description="People who have signed in to chat with the assistant." />

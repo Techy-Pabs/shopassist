@@ -73,6 +73,26 @@ describe('API client', () => {
     expect((await api.login('x', 'y')).fieldErrors.email).toBe('Something odd')
   })
 
+  it('a 422 with one message keeps it (an upload with no text, say)', async () => {
+    const { api } = client({ 'POST /admin/knowledge/documents': { status: 422, body: { detail: 'No text could be extracted from this file.' } } }, 'tok')
+
+    expect(await api.request('POST', '/admin/knowledge/documents', { form: new FormData() }))
+      .toMatchObject({ kind: 'validation', message: 'No text could be extracted from this file.', fieldErrors: {} })
+  })
+
+  it('sends a FormData as it is, letting the browser set its Content-Type', async () => {
+    const { api, fetch } = client({ 'POST /admin/knowledge/documents': { status: 201, body: { id: 1 } } }, 'tok')
+    const form = new FormData()
+    form.append('file', new File(['# Hello'], 'hello.md', { type: 'text/markdown' }))
+
+    await api.request('POST', '/admin/knowledge/documents', { form })
+
+    const init = fetch.mock.calls[0][1]
+    expect(init.body).toBe(form)
+    expect(init.headers['Content-Type']).toBeUndefined()
+    expect(init.headers.Authorization).toBe('Bearer tok')
+  })
+
   it('a 502 is "unavailable" with the server message', async () => {
     const { api } = client({ 'GET /auth/me': { status: 502, body: { detail: 'The assistant is unavailable right now.' } } }, 'tok')
 

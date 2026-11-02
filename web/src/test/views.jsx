@@ -1,7 +1,7 @@
 // The views the interface can show, and how to reach each one in a test:
 // the homepage (and its open mobile menu) and every chat panel view. Used by
 // the accessibility checks and the generated CSS check.
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { MemoryRouter } from 'react-router'
@@ -9,7 +9,9 @@ import { MemoryRouter } from 'react-router'
 import { ADMIN_TOKEN_KEY } from '../admin/session.jsx'
 import App from '../App.jsx'
 import { AppRoutes } from '../Root.jsx'
-import { ATTENTION, DETAIL, STATS, conversation, conversationsBody, detailBody, statsBody } from './adminFixtures.js'
+import {
+  ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS, conversation, conversationsBody, detailBody, documentDetail, documentsBody, statsBody,
+} from './adminFixtures.js'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
 import { setMobile } from './setup.js'
@@ -47,7 +49,10 @@ function admin(me, path = '/admin', routes = {}) {
   return {
     routes: () => {
       if (me) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
-      return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/7': DETAIL, ...routes }
+      return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/7': DETAIL,
+        'GET /admin/knowledge/documents': DOCUMENTS, 'GET /admin/knowledge/limits': LIMITS,
+        'GET /admin/knowledge/documents/9': { status: 200, body: documentDetail() }, ...routes,
+      }
     },
     render: (fetchImpl) => (
       <MemoryRouter initialEntries={[path]}>
@@ -190,6 +195,57 @@ export const VIEWS = {
     ...admin(ADMIN_ME, '/admin/conversations?q=kaftan', { 'GET /admin/conversations': { status: 200, body: conversationsBody([]) } }),
     reach: async () => {},
     ready: () => screen.findByRole('button', { name: 'Clear search' }),
+  },
+  knowledge: {
+    ...admin(ADMIN_ME, '/admin/knowledge'),
+    reach: async () => {},
+    ready: () => screen.findByRole('table'),
+  },
+  'knowledge preview': {
+    ...admin(ADMIN_ME, '/admin/knowledge?document=9'),
+    reach: async () => {},
+    ready: () => screen.findAllByRole('article'),
+  },
+  'knowledge delete dialog': {
+    ...admin(ADMIN_ME, '/admin/knowledge?document=9', {
+      'DELETE /admin/knowledge/documents/9': { status: 409, body: { detail: "This document comes from the knowledge folder; it can't be deleted here." } },
+    }),
+    // Opened from the preview, and the server said no: both dialogs and the error
+    reach: async (user) => {
+      await screen.findAllByRole('article')
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
+      await user.click(screen.getByRole('button', { name: 'Delete document' }))
+    },
+    ready: () => screen.findByText(/it can't be deleted here/),
+  },
+  'knowledge uploading': {
+    ...admin(ADMIN_ME, '/admin/knowledge', { 'POST /admin/knowledge/documents': () => deferred().promise }),
+    reach: async () => {
+      await screen.findByRole('table')
+      fireEvent.change(document.querySelector('input[type="file"]'), { target: { files: [new File(['# Hi'], 'gift-wrapping.md')] } })
+    },
+    ready: () => screen.findByRole('progressbar'),
+  },
+  'knowledge upload failed': {
+    ...admin(ADMIN_ME, '/admin/knowledge', { 'POST /admin/knowledge/documents': { status: 422, body: { detail: 'No text could be extracted from this file.' } } }),
+    reach: async () => {
+      await screen.findByRole('table')
+      fireEvent.change(document.querySelector('input[type="file"]'), { target: { files: [new File(['# Hi'], 'gift-wrapping.md')] } })
+    },
+    ready: () => screen.findByText(/No text could be extracted/),
+  },
+  'knowledge empty': {
+    ...admin(ADMIN_ME, '/admin/knowledge?source=uploaded', { 'GET /admin/knowledge/documents': { status: 200, body: documentsBody([]) } }),
+    reach: async () => {},
+    ready: () => screen.findByText('No uploaded documents yet'),
+  },
+  'knowledge error': {
+    ...admin(ADMIN_ME, '/admin/knowledge?document=9', {
+      'GET /admin/knowledge/documents': { status: 500, body: { detail: 'Something went wrong.' } },
+      'GET /admin/knowledge/documents/9': { status: 500, body: { detail: 'Something went wrong.' } },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('dialog', { name: "We couldn't load this document" }),
   },
   'admin menu open': {
     ...admin(ADMIN_ME),

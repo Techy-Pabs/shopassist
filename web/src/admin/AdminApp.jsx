@@ -4,8 +4,9 @@ import AdminLayout from './AdminLayout.jsx'
 import { Checking, NotAllowed, SignIn, Unreachable } from './Gates.jsx'
 import { useAdminLook } from './look.js'
 import ConversationsPage from './pages/ConversationsPage.jsx'
+import KnowledgePage from './pages/KnowledgePage.jsx'
 import OverviewPage from './pages/OverviewPage.jsx'
-import { CustomersPage, KnowledgePage, NotFoundPage } from './pages/Pages.jsx'
+import { CustomersPage, NotFoundPage } from './pages/Pages.jsx'
 import { AdminSessionProvider, useAdminSession } from './session.jsx'
 
 // The admin dashboard, at /admin. Loaded only when an admin address is

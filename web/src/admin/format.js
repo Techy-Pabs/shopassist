@@ -65,3 +65,25 @@ export function daysAgo(moment, { timeZone, now = new Date() }) {
 
 // "1 question", "2 questions"
 export const count = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
+// When a document changed, as the table shows it: "Just now", "Today, 16:41",
+// "27 Oct", or "27 Oct 2025" in another year
+export function updatedAt(moment, { timeZone, now = new Date() }) {
+  if (now - new Date(moment) < 60_000) return 'Just now'
+  const day = storeDay(moment, timeZone)
+  if (day === storeDay(now, timeZone)) return `Today, ${clock(moment, timeZone)}`
+  return day.slice(0, 4) === storeDay(now, timeZone).slice(0, 4) ? dayAndMonth(day) : longDate(moment, timeZone)
+}
+
+// "820 bytes", "1.2 KB", "5 MB"
+export function fileSize(bytes) {
+  if (bytes < 1024) return count(bytes, 'byte')
+  const [value, unit] = bytes < 1024 * 1024 ? [bytes / 1024, 'KB'] : [bytes / (1024 * 1024), 'MB']
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`
+}
+
+// [".pdf", ".docx", ".md"] -> "PDF, DOCX or MD"
+export function fileTypes(extensions) {
+  const names = extensions.map((e) => e.replace(/^\./, '').toUpperCase())
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : names.join('')
+}

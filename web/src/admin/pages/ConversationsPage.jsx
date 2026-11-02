@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { useIsMobile } from '../../hooks/useIsMobile.js'
 import { count, dayAndTime, longDate, shortTime, startedAt, storeDay } from '../format.js'
-import { BackIcon, CheckIcon, ReopenIcon, SearchIcon, WarningIcon } from '../icons.jsx'
+import { FilterTabs, SearchBox } from '../controls.jsx'
+import { BackIcon, CheckIcon, ReopenIcon, WarningIcon } from '../icons.jsx'
 import { useAdminSession } from '../session.jsx'
 import { useStoreStats } from '../storeStats.jsx'
 import { NO_ANSWER, useLoad } from '../useLoad.js'
@@ -16,8 +17,6 @@ const FILTERS = [
   { value: 'resolved', label: 'Resolved' },
 ]
 const PAGE_SIZE = 20
-// How long typing pauses before the search runs
-export const SEARCH_DELAY = 300
 
 // The list's state lives in the address: ?filter=attention&q=lagos&page=2
 function readList(params) {
@@ -43,83 +42,6 @@ const titleOf = (conversation) => conversation.title || 'Untitled conversation'
 const panel = 'rounded-sa-lg border border-sa-line bg-sa-surface'
 const outlineButton =
   'inline-flex cursor-pointer items-center justify-center gap-sa-2 rounded-sa-md border border-sa-line-strong bg-sa-surface px-sa-3.5 font-sa-sans text-sa-body font-medium text-sa-ink aria-disabled:cursor-default aria-disabled:text-sa-ink-muted'
-
-// The search box. The address changes once typing pauses, replacing the
-// history entry (so Back doesn't step through every letter).
-function SearchBox({ q, onSearch, phone }) {
-  const [text, setText] = useState(q)
-  const id = useId()
-
-  // Back and forward change the address: show what it says
-  useEffect(() => {
-    setText((current) => (current.trim() === q ? current : q))
-  }, [q])
-
-  useEffect(() => {
-    if (text.trim() === q) return undefined
-    const timer = setTimeout(() => onSearch(text.trim()), SEARCH_DELAY)
-    return () => clearTimeout(timer)
-  }, [text, q, onSearch])
-
-  return (
-    <div
-      className={`flex ${phone ? 'h-sa-control-xl w-full' : 'h-sa-control-lg w-sa-search max-w-full'} items-center gap-sa-2 rounded-sa-md border border-sa-line-strong bg-sa-surface px-sa-3 text-sa-ink-muted focus-within:outline focus-within:outline-ring focus-within:outline-offset-ring focus-within:outline-sa-accent`}
-    >
-      <SearchIcon />
-      <label htmlFor={id} className="sr-only">Search conversations</label>
-      <input
-        id={id}
-        type="search"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        placeholder="Search by question or email"
-        className="h-full min-w-0 flex-1 border-0 bg-transparent font-sa-sans text-sa-body text-sa-ink focus-visible:outline-0"
-      />
-    </div>
-  )
-}
-
-// The filter tabs: arrow keys, Home and End move between them (and choose
-// the tab, so the list follows). Only the chosen tab is in the Tab order.
-function FilterTabs({ filter, counts, onChange, ids, phone }) {
-  const tabs = useRef({})
-  function onKeyDown(event) {
-    const at = FILTERS.findIndex((f) => f.value === filter)
-    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: FILTERS.length - 1 }[event.key]
-    if (to === undefined) return
-    event.preventDefault()
-    const next = FILTERS[(to + FILTERS.length) % FILTERS.length].value
-    onChange(next)
-    tabs.current[next]?.focus()
-  }
-  return (
-    <div role="tablist" aria-label="Filter conversations" onKeyDown={onKeyDown}
-      className="flex shrink-0 gap-sa-1 overflow-x-auto border-b border-sa-line-soft px-sa-4 py-sa-3">
-      {FILTERS.map(({ value, label }) => {
-        const on = value === filter
-        return (
-          <button
-            key={value}
-            ref={(element) => (tabs.current[value] = element)}
-            id={`${ids}-tab-${value}`}
-            type="button"
-            role="tab"
-            aria-selected={on}
-            aria-controls={`${ids}-panel`}
-            tabIndex={on ? 0 : -1}
-            onClick={() => onChange(value)}
-            className={`flex ${phone ? 'h-sa-touch' : 'h-sa-control'} shrink-0 cursor-pointer items-center gap-sa-1 rounded-sa-pill border px-sa-2.5 font-sa-sans text-sa-small ${
-              on ? 'border-sa-ink bg-sa-ink font-medium text-sa-surface' : 'border-sa-line bg-sa-surface text-sa-ink hover:border-sa-line-strong'
-            }`}
-          >
-            {label}
-            {counts && <span className={on ? 'font-sa-mono' : 'font-sa-mono text-sa-ink-muted'}>{counts[value]}</span>}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 export function StatusBadge({ conversation }) {
   const chip = 'rounded-sa-pill px-sa-2 py-sa-0.25 text-sa-caption font-semibold'
@@ -519,7 +441,10 @@ export default function ConversationsPage() {
 
   const listPanel = (
     <>
-      <FilterTabs filter={request.filter} counts={counts.current} ids={ids} phone={phone} onChange={(filter) => go({ ...request, filter, page: 1 })} />
+      <div className="border-b border-sa-line-soft px-sa-4 py-sa-3">
+        <FilterTabs options={FILTERS} value={request.filter} counts={counts.current} ids={ids} phone={phone} label="Filter conversations"
+          onChange={(filter) => go({ ...request, filter, page: 1 })} />
+      </div>
       <ConversationList
         list={list}
         request={request}
@@ -554,7 +479,7 @@ export default function ConversationsPage() {
           </>
         ) : (
           <section aria-label="Conversation list" className="flex flex-col bg-sa-surface">
-            <div className="px-sa-4 pb-sa-1 pt-sa-4"><SearchBox q={request.q} onSearch={onSearch} phone /></div>
+            <div className="px-sa-4 pb-sa-1 pt-sa-4"><SearchBox q={request.q} onSearch={onSearch} label="Search conversations" placeholder="Search by question or email" size="h-sa-control-xl w-full" /></div>
             {listPanel}
           </section>
         )}
@@ -566,7 +491,7 @@ export default function ConversationsPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-sa-line bg-sa-surface px-sa-7 pb-sa-4 pt-sa-5">
         <PageHeader title="Conversations">
-          <SearchBox q={request.q} onSearch={onSearch} />
+          <SearchBox q={request.q} onSearch={onSearch} label="Search conversations" placeholder="Search by question or email" size="h-sa-control-lg w-sa-search max-w-full" />
         </PageHeader>
       </div>
       <div className="flex min-h-0 flex-1">
