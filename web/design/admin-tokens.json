@@ -458,6 +458,11 @@
         "usage": "A search box in a toolbar, such as above the documents table."
       },
       {
+        "name": "search-md",
+        "value": "280px",
+        "usage": "The search box above the customer table."
+      },
+      {
         "name": "preview",
         "value": "560px",
         "usage": "The document preview panel's width."
@@ -466,6 +471,11 @@
         "name": "table-min",
         "value": "720px",
         "usage": "The narrowest the documents table gets (narrower screens scroll it)."
+      },
+      {
+        "name": "table-wide",
+        "value": "760px",
+        "usage": "The narrowest the customer table gets (narrower screens scroll it)."
       },
       {
         "name": "panel",

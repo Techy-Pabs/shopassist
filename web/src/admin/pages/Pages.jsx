@@ -27,27 +27,11 @@ export function PageHeader({ title, description, children, srOnly = false }) {
   )
 }
 
-// Until the real page arrives in a later step
-function Placeholder({ title, description }) {
-  return (
-    <div className="flex flex-col gap-sa-6">
-      <PageHeader title={title} description={description} />
-      <div className="rounded-sa-lg border border-sa-line bg-sa-surface p-sa-5 text-sa-ink-muted">
-        This page is being built.
-      </div>
-    </div>
-  )
-}
-
-export const CustomersPage = () => (
-  <Placeholder title="Customers" description="People who have signed in to chat with the assistant." />
-)
-
 export function NotFoundPage() {
   return (
     <div className="flex flex-col gap-sa-6">
       <PageHeader title="Page not found" description="There is no admin page at this address." />
-      <Link to="/admin">Go to the overview</Link>
+      <Link to="/admin" className="inline-flex min-h-sa-touch items-center self-start sm:min-h-0">Go to the overview</Link>
     </div>
   )
 }

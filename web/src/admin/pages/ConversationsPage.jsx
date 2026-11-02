@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { useIsMobile } from '../../hooks/useIsMobile.js'
 import { count, dayAndTime, longDate, shortTime, startedAt, storeDay } from '../format.js'
-import { FilterTabs, SearchBox } from '../controls.jsx'
+import { FilterTabs, Paging, SearchBox } from '../controls.jsx'
 import { BackIcon, CheckIcon, ReopenIcon, WarningIcon } from '../icons.jsx'
 import { useAdminSession } from '../session.jsx'
 import { useStoreStats } from '../storeStats.jsx'
@@ -72,8 +72,11 @@ function emptyMessage({ filter, q }) {
 
 // The list of conversations, as the tabs' panel. Titles and emails are
 // customer text: React shows them as plain text, never as HTML.
-function ConversationList({ list, request, selectedId, timeZone, ids, onPage, onClearSearch, focusId }) {
-  const items = list.status === 'ready' ? list.data.items : []
+function ConversationList({ list, request, selectedId, timeZone, ids, onPage, onClearSearch, focusId, phone }) {
+  // Moving to another page, tab or search keeps the last list showing until
+  // the new one arrives, so the button that was pressed keeps focus
+  const busy = list.status === 'loading' && Boolean(list.data)
+  const items = list.status === 'ready' || busy ? list.data.items : []
   const body = useRef(null)
 
   // Back from a conversation on a phone: focus its row again
@@ -83,28 +86,28 @@ function ConversationList({ list, request, selectedId, timeZone, ids, onPage, on
 
   const message = 'flex flex-col gap-sa-1 px-sa-4 py-sa-5'
   return (
-    <div ref={body} role="tabpanel" id={`${ids}-panel`} aria-labelledby={`${ids}-tab-${request.filter}`}
+    <div ref={body} role="tabpanel" id={`${ids}-panel`} aria-labelledby={`${ids}-tab-${request.filter}`} aria-busy={busy}
       tabIndex={items.length ? undefined : 0} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      {list.status === 'loading' && <p role="status" className="m-0 px-sa-4 py-sa-5 text-sa-ink-muted">Loading conversations…</p>}
+      {list.status === 'loading' && !busy && <p role="status" className="m-0 px-sa-4 py-sa-5 text-sa-ink-muted">Loading conversations…</p>}
       {list.status === 'error' && (
         <div role="alert" className={`${message} gap-sa-3`}>
           <p className="m-0 font-semibold">We couldn&apos;t load the conversations</p>
           <p className="m-0 text-sa-small text-sa-ink-muted">{list.message}</p>
-          <button type="button" onClick={list.retry} className={`${outlineButton} h-sa-control-lg self-start`}>Try again</button>
+          <button type="button" onClick={list.retry} className={`${outlineButton} h-sa-touch sm:h-sa-control-lg self-start`}>Try again</button>
         </div>
       )}
       {list.status === 'ready' && items.length === 0 && (
         request.page > 1 ? (
           <div className={message}>
             <p className="m-0 font-semibold">There&apos;s nothing on page {request.page}</p>
-            <button type="button" onClick={() => onPage(1)} className={`${outlineButton} mt-sa-2 h-sa-control-lg self-start`}>Go to the first page</button>
+            <button type="button" onClick={() => onPage(1)} className={`${outlineButton} mt-sa-2 h-sa-touch sm:h-sa-control-lg self-start`}>Go to the first page</button>
           </div>
         ) : (
           <div className={message}>
             <p className="m-0 font-semibold">{emptyMessage(request).title}</p>
             <p className="m-0 text-sa-small text-sa-ink-muted">{emptyMessage(request).text}</p>
             {request.q && (
-              <button type="button" onClick={onClearSearch} className={`${outlineButton} mt-sa-2 h-sa-control-lg self-start`}>Clear search</button>
+              <button type="button" onClick={onClearSearch} className={`${outlineButton} mt-sa-2 h-sa-touch sm:h-sa-control-lg self-start`}>Clear search</button>
             )}
           </div>
         )
@@ -142,25 +145,11 @@ function ConversationList({ list, request, selectedId, timeZone, ids, onPage, on
           })}
         </ul>
       )}
-      {list.status === 'ready' && list.data.total > PAGE_SIZE && (
-        <Paging page={request.page} total={list.data.total} onPage={onPage} />
+      {(list.status === 'ready' || busy) && list.data.total > PAGE_SIZE && (
+        <Paging page={request.page} pageSize={PAGE_SIZE} total={list.data.total} onPage={onPage} phone={phone}
+          summary={(first, last, total) => `${first}–${last} of ${total}`} />
       )}
     </div>
-  )
-}
-
-function Paging({ page, total, onPage }) {
-  const first = (page - 1) * PAGE_SIZE + 1
-  const last = Math.min(total, page * PAGE_SIZE)
-  const button = `${outlineButton} h-sa-control-md px-sa-3 text-sa-small`
-  return (
-    <nav aria-label="Pages" className="mt-auto flex items-center justify-between gap-sa-3 border-t border-sa-line-soft px-sa-4 py-sa-3">
-      <span className="text-sa-small text-sa-ink-muted">{first}–{last} of {total}</span>
-      <span className="flex gap-sa-2">
-        <button type="button" className={button} aria-disabled={page === 1} onClick={() => page > 1 && onPage(page - 1)}>Previous</button>
-        <button type="button" className={button} aria-disabled={last >= total} onClick={() => last < total && onPage(page + 1)}>Next</button>
-      </span>
-    </nav>
   )
 }
 
@@ -266,7 +255,7 @@ function ThreadMessage({ heading, title, children, role }) {
 
 // One conversation: every message, its outcome and sources, and the
 // resolve button. Message text is plain text, never HTML.
-function Thread({ id, thread, timeZone, backTo, phone, onChanged }) {
+function Thread({ id, thread, timeZone, backTo, phone, onChanged, focusOnOpen, onFocused }) {
   const { api } = useAdminSession()
   const [action, setAction] = useState({ status: 'idle' })
   const [announcement, setAnnouncement] = useState('')
@@ -279,11 +268,21 @@ function Thread({ id, thread, timeZone, backTo, phone, onChanged }) {
     setAnnouncement('')
   }, [id])
 
-  // On a phone the thread is its own screen: focus its heading when it opens
+  // Focus the conversation's heading when it opens: always on a phone (the
+  // thread is its own screen), and on a desktop when the page opened at this
+  // conversation (from the Overview, a link or a refresh). Choosing rows in
+  // the list keeps focus in the list.
+  // Once per conversation: resolving it, say, must leave focus on the button.
   const settled = thread.status !== 'loading'
+  const focusedFor = useRef(null)
   useEffect(() => {
-    if (phone && settled) heading.current?.focus()
-  }, [phone, id, settled])
+    // (Only once there's a heading: the first render, before loading starts, has none)
+    if ((phone || focusOnOpen) && settled && heading.current && focusedFor.current !== id) {
+      focusedFor.current = id
+      heading.current.focus()
+      onFocused?.()
+    }
+  }, [phone, id, settled, focusOnOpen, thread.status])
 
   async function toggle() {
     if (action.status === 'pending') return
@@ -308,7 +307,7 @@ function Thread({ id, thread, timeZone, backTo, phone, onChanged }) {
     onChanged()
   }
 
-  const back = <Link to={backTo}>Back to all conversations</Link>
+  const back = <Link to={backTo} className="inline-flex min-h-sa-touch items-center self-start sm:min-h-0">Back to all conversations</Link>
   const notFound = !/^\d+$/.test(id) || thread.httpStatus === 404
   if (notFound) {
     return (
@@ -323,7 +322,7 @@ function Thread({ id, thread, timeZone, backTo, phone, onChanged }) {
     return (
       <ThreadMessage heading={heading} title="We couldn't load this conversation" role="alert">
         <p className="m-0 text-sa-ink-muted">{thread.message}</p>
-        <button type="button" onClick={thread.retry} className={`${outlineButton} h-sa-control-lg self-start`}>Try again</button>
+        <button type="button" onClick={thread.retry} className={`${outlineButton} h-sa-touch sm:h-sa-control-lg self-start`}>Try again</button>
       </ThreadMessage>
     )
   }
@@ -425,6 +424,9 @@ export default function ConversationsPage() {
   const { filter } = request
   const onSearch = useCallback((q) => go({ filter, q, page: 1 }, { replace: true }), [go, filter])
 
+  // The conversation the page opened at, if any: its heading takes focus once
+  const openedAt = useRef(id)
+
   // On a phone, coming back from a conversation focuses its row in the list
   const [returnFrom, setReturnFrom] = useState(null)
   const lastId = useRef(id)
@@ -452,13 +454,15 @@ export default function ConversationsPage() {
         timeZone={timeZone}
         ids={ids}
         focusId={phone ? returnFrom : null}
+        phone={phone}
         onPage={(page) => go({ ...request, page })}
         onClearSearch={() => go({ ...request, q: '', page: 1 })}
       />
     </>
   )
   const threadView = id && (
-    <Thread id={id} thread={thread} timeZone={timeZone} backTo={`/admin/conversations${listSearch(request)}`} phone={phone} onChanged={onChanged} />
+    <Thread id={id} thread={thread} timeZone={timeZone} backTo={`/admin/conversations${listSearch(request)}`} phone={phone} onChanged={onChanged}
+      focusOnOpen={id === openedAt.current} onFocused={() => (openedAt.current = null)} />
   )
   const customer = id && thread.status === 'ready' && thread.data.customer
 

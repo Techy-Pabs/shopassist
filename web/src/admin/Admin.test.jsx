@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 
 import { AppRoutes } from '../Root.jsx'
-import { ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS } from '../test/adminFixtures.js'
+import { ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS, USERS } from '../test/adminFixtures.js'
 import { callsTo, fakeFetch } from '../test/fakeApi.js'
 import { setMobile } from '../test/setup.js'
 import { PLEX_FONTS_URL } from './look.js'
@@ -17,7 +17,7 @@ function open(path, routes = {}, { token = 'admin-token' } = {}) {
   if (token) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token)
   const fetch = fakeFetch({
     'GET /auth/me': ADMIN, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/42': DETAIL,
-    'GET /admin/knowledge/documents': DOCUMENTS, 'GET /admin/knowledge/limits': LIMITS, ...routes,
+    'GET /admin/knowledge/documents': DOCUMENTS, 'GET /admin/knowledge/limits': LIMITS, 'GET /admin/users': USERS, ...routes,
   })
   const user = userEvent.setup()
   render(
@@ -111,7 +111,8 @@ describe('the layout', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
-    expect(await heading('Sign in to the dashboard')).toBeInTheDocument()
+    // Focus goes to the sign in heading, not lost on the page
+    expect(await heading('Sign in to the dashboard')).toHaveFocus()
     expect(window.sessionStorage.getItem(ADMIN_TOKEN_KEY)).toBeNull()
   })
 
@@ -150,6 +151,17 @@ describe('on a phone', () => {
     expect(button).toHaveAccessibleName('Close menu')
     const nav = screen.getByRole('navigation', { name: 'Admin' })
     expect(within(nav).getAllByRole('link')).toHaveLength(4)
+  })
+
+  it('the menu and the sign in link are 44px targets (touch size below the sm: breakpoint)', async () => {
+    const { user } = open('/admin/knowledge')
+    await heading('Knowledge')
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+
+    for (const link of within(screen.getByRole('navigation', { name: 'Admin' })).getAllByRole('link')) {
+      expect(link).toHaveClass('h-sa-touch', 'sm:h-sa-control-lg')
+    }
+    expect(screen.getByRole('link', { name: "Open the store's chat" })).toHaveClass('h-sa-touch')
   })
 
   it('Escape closes the menu and returns focus to its button', async () => {
@@ -198,6 +210,12 @@ describe('who gets in', () => {
 
     expect(await heading('Knowledge')).toBeInTheDocument()
     expect(window.sessionStorage.getItem(ADMIN_TOKEN_KEY)).toBe('new-token')
+  })
+
+  it('the sign in screen focuses its heading, and its link back to the store is a 44px target', async () => {
+    open('/admin', {}, { token: null })
+    expect(await heading('Sign in to the dashboard')).toHaveFocus()
+    expect(screen.getByRole('link', { name: 'Back to the store' })).toHaveClass('min-h-sa-touch', 'sm:min-h-0')
   })
 
   it('a wrong password shows the error', async () => {

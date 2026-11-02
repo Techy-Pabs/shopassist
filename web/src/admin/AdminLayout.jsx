@@ -26,7 +26,8 @@ const initials = (name) =>
     .slice(0, 2)
 
 // One colour class per state: with two, the one later in the CSS wins
-const row = 'flex h-sa-control-lg items-center gap-sa-2.5 rounded-sa-md px-sa-2.5 no-underline'
+// A touch-sized row on a phone (the menu); the mockup's control size beside the sidebar
+const row = 'flex h-sa-touch sm:h-sa-control-lg items-center gap-sa-2.5 rounded-sa-md px-sa-2.5 no-underline'
 const rowLink = `${row} text-sa-ink hover:bg-sa-surface-muted`
 const currentRowLink = `${row} bg-sa-accent-tint font-semibold text-sa-accent hover:text-sa-accent`
 

@@ -131,3 +131,22 @@ export function documentDetail(overrides = {}) {
 export const LIMITS = {
   status: 200, body: { accepted_types: ['.pdf', '.docx', '.txt', '.md'], max_file_bytes: 5 * 1024 * 1024, max_pdf_pages: 50, max_chars: 200000, max_chunks: 200 },
 }
+
+export function adminUser(overrides = {}) {
+  return {
+    id: 3, email: 'chioma.o@example.com', role: 'customer', created_at: '2026-10-12T09:00:00Z',
+    conversation_count: 3, last_active: '2026-10-28T13:24:00Z', ...overrides,
+  }
+}
+
+// GET /admin/users
+export const usersBody = (items, total = items.length) => ({ items, total, limit: 20, offset: 0 })
+
+export const USERS = {
+  status: 200,
+  body: usersBody([
+    adminUser(),
+    adminUser({ id: 4, email: 'tunde.a@example.com', conversation_count: 1, last_active: null, created_at: '2026-10-28T09:00:00Z' }),
+    adminUser({ id: 1, email: 'abraham@example.com', role: 'admin', conversation_count: 6, created_at: '2026-10-02T09:00:00Z' }),
+  ]),
+}

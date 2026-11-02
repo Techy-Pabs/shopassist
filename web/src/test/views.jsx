@@ -10,7 +10,8 @@ import { ADMIN_TOKEN_KEY } from '../admin/session.jsx'
 import App from '../App.jsx'
 import { AppRoutes } from '../Root.jsx'
 import {
-  ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS, conversation, conversationsBody, detailBody, documentDetail, documentsBody, statsBody,
+  ATTENTION, DETAIL, DOCUMENTS, LIMITS, STATS, USERS, conversation, conversationsBody, detailBody, documentDetail, documentsBody,
+  statsBody, usersBody,
 } from './adminFixtures.js'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
@@ -51,7 +52,7 @@ function admin(me, path = '/admin', routes = {}) {
       if (me) window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')
       return { 'GET /auth/me': me, 'GET /admin/stats': STATS, 'GET /admin/conversations': ATTENTION, 'GET /admin/conversations/7': DETAIL,
         'GET /admin/knowledge/documents': DOCUMENTS, 'GET /admin/knowledge/limits': LIMITS,
-        'GET /admin/knowledge/documents/9': { status: 200, body: documentDetail() }, ...routes,
+        'GET /admin/knowledge/documents/9': { status: 200, body: documentDetail() }, 'GET /admin/users': USERS, ...routes,
       }
     },
     render: (fetchImpl) => (
@@ -246,6 +247,28 @@ export const VIEWS = {
     }),
     reach: async () => {},
     ready: () => screen.findByRole('dialog', { name: "We couldn't load this document" }),
+  },
+  customers: {
+    ...admin(ADMIN_ME, '/admin/customers?page=2', {
+      'GET /admin/users': { status: 200, body: usersBody(USERS.body.items, 45) },
+    }),
+    reach: async () => {},
+    ready: () => screen.findByRole('navigation', { name: 'Pages' }),
+  },
+  'customers, none yet': {
+    ...admin(ADMIN_ME, '/admin/customers', { 'GET /admin/users': { status: 200, body: usersBody([]) } }),
+    reach: async () => {},
+    ready: () => screen.findByText('No customers yet'),
+  },
+  'customers, no search results': {
+    ...admin(ADMIN_ME, '/admin/customers?q=kaftan', { 'GET /admin/users': { status: 200, body: usersBody([]) } }),
+    reach: async () => {},
+    ready: () => screen.findByRole('button', { name: 'Clear search' }),
+  },
+  'customers error': {
+    ...admin(ADMIN_ME, '/admin/customers', { 'GET /admin/users': { status: 500, body: { detail: 'Something went wrong.' } } }),
+    reach: async () => {},
+    ready: () => screen.findByText("We couldn't load the customers"),
   },
   'admin menu open': {
     ...admin(ADMIN_ME),

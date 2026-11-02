@@ -87,3 +87,13 @@ export function fileTypes(extensions) {
   const names = extensions.map((e) => e.replace(/^\./, '').toUpperCase())
   return names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : names.join('')
 }
+
+// When someone last wrote, as the customer table shows it: "Today, 14:24",
+// "Mon" this week, "12 Oct", or "12 Oct 2025" in another year
+export function lastActive(moment, { timeZone, now = new Date() }) {
+  const day = storeDay(moment, timeZone)
+  const age = daysBetween(day, storeDay(now, timeZone))
+  if (age <= 0) return `Today, ${clock(moment, timeZone)}`
+  if (age < 7) return weekday(day)
+  return day.slice(0, 4) === storeDay(now, timeZone).slice(0, 4) ? dayAndMonth(day) : longDate(moment, timeZone)
+}

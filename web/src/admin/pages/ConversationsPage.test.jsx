@@ -63,6 +63,18 @@ describe('the address holds the selection', () => {
     expect(document.title).toBe('Conversations · ShopAssist admin')
   })
 
+  it("opening the page at a conversation focuses its heading; choosing rows after that keeps focus in the list", async () => {
+    const { user } = open('/admin/conversations/7')
+    const heading = await threadHeading('Do you sell silk evening gowns?')
+    await waitFor(() => expect(heading).toHaveFocus())
+
+    const second = await row('tunde.a@example.com')
+    second.focus()
+    await user.keyboard('{Enter}')
+    expect(await threadHeading('Can I change my delivery address?')).toBeInTheDocument()
+    expect(second).toHaveFocus()
+  })
+
   it('without an id, asks to choose one', async () => {
     open('/admin/conversations')
     expect(await screen.findByText('Choose a conversation to read it.')).toBeInTheDocument()
@@ -86,6 +98,7 @@ describe('the address holds the selection', () => {
 
     expect(await threadHeading('Conversation not found')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to all conversations' })).toHaveAttribute('href', '/admin/conversations')
+    expect(screen.getByRole('link', { name: 'Back to all conversations' })).toHaveClass('min-h-sa-touch')
     expect(await row('chioma.o@example.com')).toBeInTheDocument() // the list still shows
   })
 
@@ -222,6 +235,24 @@ describe('paging', () => {
     expect(here()).toBe('/admin/conversations?page=2')
     await waitFor(() => expect(listQuery(fetch).get('offset')).toBe('20'))
     expect(await screen.findByRole('navigation', { name: 'Pages' })).toHaveTextContent('21–40 of 45')
+  })
+
+  it('Next keeps focus while the next page loads, showing the last page meanwhile', async () => {
+    const reply = deferred()
+    let calls = 0
+    const long = { status: 200, body: { ...LIST.body, total: 45 } }
+    const { user } = open('/admin/conversations', { 'GET /admin/conversations': () => (++calls === 1 ? long : reply.promise) })
+    const next = within(await screen.findByRole('navigation', { name: 'Pages' })).getByRole('button', { name: 'Next' })
+    next.focus()
+
+    await user.keyboard('{Enter}')
+
+    expect(next).toHaveFocus()
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('link', { name: /chioma.o@example.com/ })).toBeInTheDocument() // the last page, until the new one comes
+    await act(async () => reply.resolve(long))
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-busy', 'false')
+    expect(next).toHaveFocus()
   })
 
   it('changing the tab goes back to the first page', async () => {
@@ -491,6 +522,20 @@ describe('on a phone', () => {
 
     expect(here()).toBe('/admin/conversations?filter=attention')
     await waitFor(() => expect(screen.getByRole('link', { name: /chioma.o@example.com/ })).toHaveFocus())
+  })
+
+  it('resolving keeps focus on the button (the heading takes focus only when the thread opens)', async () => {
+    const { user } = open('/admin/conversations/7', {
+      'POST /admin/conversations/7/resolve': { status: 200, body: { id: 7, resolved_at: '2026-10-29T09:00:00Z', resolved_by: 1 } },
+    })
+    await waitFor(async () => expect(await threadHeading('Do you sell silk evening gowns?')).toHaveFocus())
+    const button = screen.getByRole('button', { name: 'Mark as resolved' })
+    button.focus()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(screen.getByText('Marked as resolved.')).toBeInTheDocument())
+    expect(button).toHaveFocus()
   })
 
   it('Back from the thread returns to the list', async () => {

@@ -10,7 +10,9 @@ export const NO_ANSWER = "ShopAssist didn't answer. It may be waking up after a 
 // older reply never replaces a newer one. With no path, nothing loads.
 //
 // status: "idle", "loading", "ready" (with data) or "error" (with message,
-// and the HTTP status: 404 is "not found"). retry() loads again from the
+// and the HTTP status: 404 is "not found"). While a new path loads, data
+// still holds the last reply, for a list that keeps showing its last page
+// (and so keeps focus on its paging buttons). retry() loads again from the
 // loading state; refresh() loads again quietly, keeping what's showing.
 export function useLoad(path) {
   const { api } = useAdminSession()
@@ -24,7 +26,9 @@ export function useLoad(path) {
     }
     const controller = new AbortController()
     // A quiet refresh of the same path keeps what's showing
-    setState((current) => (attempt.quiet && current.path === path && current.status === 'ready' ? current : { status: 'loading', path }))
+    setState((current) =>
+      attempt.quiet && current.path === path && current.status === 'ready' ? current : { status: 'loading', path, data: current.data },
+    )
     api.request('GET', path, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return
       if (result.ok) setState({ status: 'ready', path, data: result.data })

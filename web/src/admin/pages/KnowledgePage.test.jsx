@@ -473,6 +473,13 @@ describe('on a phone', () => {
     expect(screen.getByRole('button', { name: 'Upload document' })).toHaveClass('h-sa-touch', 'w-full')
   })
 
+  it('document names and Dismiss are 44px targets (touch size below the sm: breakpoint)', async () => {
+    open()
+    expect(await screen.findByRole('link', { name: 'gift-wrapping.md' })).toHaveClass('min-h-sa-touch', 'sm:min-h-0')
+    fireEvent.change(fileInput(), { target: { files: [new File(['x'], 'photo.png')] } })
+    expect(await screen.findByRole('button', { name: 'Dismiss' })).toHaveClass('h-sa-touch', 'w-sa-touch', 'sm:h-sa-control')
+  })
+
   it('the preview is a full screen panel', async () => {
     open('/admin/knowledge?document=9')
     const dialog = await screen.findByRole('dialog', { name: 'gift-wrapping.md' })

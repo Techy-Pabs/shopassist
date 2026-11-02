@@ -82,3 +82,21 @@ export function FilterTabs({ options, value, counts, onChange, ids, label, phone
     </div>
   )
 }
+
+// Previous and Next under a long list, with what's showing ("1–20 of 45").
+// Buttons that can't go further say so with aria-disabled (and stay
+// focusable, so focus isn't lost at the first or last page).
+export function Paging({ page, pageSize, total, onPage, summary, phone }) {
+  const first = (page - 1) * pageSize + 1
+  const last = Math.min(total, page * pageSize)
+  const button = `inline-flex ${phone ? 'h-sa-touch' : 'h-sa-control-md'} cursor-pointer items-center rounded-sa-md border border-sa-line-strong bg-sa-surface px-sa-3 font-sa-sans text-sa-small font-medium text-sa-ink aria-disabled:cursor-default aria-disabled:border-sa-line aria-disabled:bg-sa-surface-muted aria-disabled:text-sa-ink-muted`
+  return (
+    <nav aria-label="Pages" className="mt-auto flex flex-wrap items-center justify-between gap-sa-3 border-t border-sa-line-soft px-sa-4 py-sa-3">
+      <span className="text-sa-small text-sa-ink-muted">{summary(first, last, total)}</span>
+      <span className="flex gap-sa-2">
+        <button type="button" className={button} aria-disabled={page === 1} onClick={() => page > 1 && onPage(page - 1)}>Previous</button>
+        <button type="button" className={button} aria-disabled={last >= total} onClick={() => last < total && onPage(page + 1)}>Next</button>
+      </span>
+    </nav>
+  )
+}

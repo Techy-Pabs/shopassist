@@ -74,7 +74,7 @@ function Banner({ banner, onDismiss }) {
   if (!banner) return null
   const dismiss = (
     <button type="button" aria-label="Dismiss" onClick={onDismiss}
-      className="flex h-sa-control w-sa-control shrink-0 cursor-pointer items-center justify-center rounded-sa-md border-0 bg-transparent text-current">
+      className="flex h-sa-touch w-sa-touch shrink-0 cursor-pointer items-center justify-center rounded-sa-md border-0 bg-transparent text-current sm:h-sa-control sm:w-sa-control">
       <DismissIcon />
     </button>
   )
@@ -122,7 +122,7 @@ function DocumentsTable({ list, request, highlight, timeZone, phone, previewLink
       <div role="alert" className={`${message} gap-sa-3`}>
         <p className="m-0 font-semibold">We couldn&apos;t load the documents</p>
         <p className="m-0 text-sa-small text-sa-ink-muted">{list.message}</p>
-        <button type="button" onClick={list.retry} className={`${outlineButton} h-sa-control-lg self-start`}>Try again</button>
+        <button type="button" onClick={list.retry} className={`${outlineButton} h-sa-touch sm:h-sa-control-lg self-start`}>Try again</button>
       </div>
     )
   } else if (items.length === 0) {
@@ -137,7 +137,7 @@ function DocumentsTable({ list, request, highlight, timeZone, phone, previewLink
       <div className={message}>
         <p className="m-0 font-semibold">{title}</p>
         <p className="m-0 text-sa-small text-sa-ink-muted">{text}</p>
-        {request.q && <button type="button" onClick={onClearSearch} className={`${outlineButton} mt-sa-2 h-sa-control-lg self-start`}>Clear search</button>}
+        {request.q && <button type="button" onClick={onClearSearch} className={`${outlineButton} mt-sa-2 h-sa-touch sm:h-sa-control-lg self-start`}>Clear search</button>}
       </div>
     )
   } else {
@@ -163,7 +163,7 @@ function DocumentsTable({ list, request, highlight, timeZone, phone, previewLink
             {items.map((d) => (
               <tr key={d.id} className={`border-t border-sa-line-soft ${d.id === highlight ? 'bg-sa-accent-faint' : ''}`}>
                 <td className={cell}>
-                  <Link to={previewLink(d.id)} data-preview={d.id} className="break-all font-semibold text-sa-ink">{d.source}</Link>
+                  <Link to={previewLink(d.id)} data-preview={d.id} className="inline-flex min-h-sa-touch items-center break-all font-semibold text-sa-ink sm:min-h-0">{d.source}</Link>
                 </td>
                 <td className={cell}><SourceBadge document={d} /></td>
                 <td className={`${cell} text-right font-sa-mono`}>{d.chunk_count}</td>
@@ -258,7 +258,7 @@ function Preview({ id, timeZone, phone, onClose, onDelete, fallback }) {
           {!notFound && loaded.status === 'error' && (
             <div role="alert" className="flex flex-col gap-sa-3">
               <p className="m-0 text-sa-ink-muted">{loaded.message}</p>
-              <button type="button" onClick={loaded.retry} className={`${outlineButton} h-sa-control-lg self-start`}>Try again</button>
+              <button type="button" onClick={loaded.retry} className={`${outlineButton} h-sa-touch sm:h-sa-control-lg self-start`}>Try again</button>
             </div>
           )}
           {d && (

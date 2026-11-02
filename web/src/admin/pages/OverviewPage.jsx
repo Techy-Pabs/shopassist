@@ -53,7 +53,7 @@ function knowledgeNote({ documents, last_updated: updated }, timeZone) {
 const panel = 'rounded-sa-lg border border-sa-line bg-sa-surface'
 const cardLink = 'text-sa-ink no-underline hover:text-sa-ink'
 const secondaryButton =
-  'flex h-sa-control-lg cursor-pointer items-center justify-center self-start rounded-sa-md border border-sa-line-strong bg-sa-surface px-sa-4 font-sa-sans text-sa-body font-semibold text-sa-ink'
+  'flex h-sa-touch sm:h-sa-control-lg cursor-pointer items-center justify-center self-start rounded-sa-md border border-sa-line-strong bg-sa-surface px-sa-4 font-sa-sans text-sa-body font-semibold text-sa-ink'
 
 function RangeSwitch({ range, onChange, phone }) {
   return (
@@ -289,7 +289,7 @@ function NothingYet() {
         When customers chat with the assistant, you&apos;ll see how many conversations it has, how many questions it
         answers, and anything that needs your attention.
       </p>
-      <Link to="/" className="self-start font-medium">Try the chat as a customer</Link>
+      <Link to="/" className="inline-flex min-h-sa-touch items-center self-start font-medium sm:min-h-0">Try the chat as a customer</Link>
     </section>
   )
 }

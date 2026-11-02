@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import { usePageTitle } from './look.js'
@@ -6,10 +6,16 @@ import { useAdminSession } from './session.jsx'
 
 // The screens before the dashboard: sign in, not allowed, unreachable, checking
 
+// Each screen's heading takes focus when it appears (after signing out, say),
+// so screen readers announce where they are and Tab starts from here
 function Card({ children }) {
+  const card = useRef(null)
+  useLayoutEffect(() => {
+    card.current.querySelector('h1')?.focus()
+  }, [])
   return (
     <main className="flex min-h-dvh items-center justify-center p-sa-4">
-      <div className="flex w-full max-w-sa-dialog flex-col gap-sa-6 rounded-sa-lg border border-sa-line bg-sa-surface p-sa-6">
+      <div ref={card} className="flex w-full max-w-sa-dialog flex-col gap-sa-6 rounded-sa-lg border border-sa-line bg-sa-surface p-sa-6">
         <div className="flex items-center gap-sa-2.5">
           <span aria-hidden="true" className="flex h-sa-avatar w-sa-avatar items-center justify-center rounded-sa-md bg-sa-accent font-semibold text-sa-surface">
             S
@@ -48,7 +54,7 @@ export function SignIn() {
   return (
     <Card>
       <div className="flex flex-col gap-sa-1">
-        <h1 className="m-0 text-sa-title">Sign in to the dashboard</h1>
+        <h1 tabIndex={-1} className="m-0 text-sa-title outline-none">Sign in to the dashboard</h1>
         <p className="m-0 text-sa-ink-muted">For store admins. Use the account that has admin access.</p>
       </div>
       {notice && (
@@ -74,7 +80,7 @@ export function SignIn() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <Link to="/" className="self-start text-sa-small">Back to the store</Link>
+      <Link to="/" className="inline-flex min-h-sa-touch items-center self-start text-sa-small sm:min-h-0">Back to the store</Link>
     </Card>
   )
 }
@@ -85,7 +91,7 @@ export function NotAllowed() {
   return (
     <Card>
       <div className="flex flex-col gap-sa-2">
-        <h1 className="m-0 text-sa-title">This area is for store admins</h1>
+        <h1 tabIndex={-1} className="m-0 text-sa-title outline-none">This area is for store admins</h1>
         <p className="m-0 text-sa-ink-muted">
           You&apos;re signed in as {user.email}, which is a customer account. The store&apos;s chat is where customers
           ask their questions.
@@ -108,7 +114,7 @@ export function Unreachable() {
   return (
     <Card>
       <div role="alert" className="flex flex-col gap-sa-2">
-        <h1 className="m-0 text-sa-title">We couldn&apos;t reach ShopAssist</h1>
+        <h1 tabIndex={-1} className="m-0 text-sa-title outline-none">We couldn&apos;t reach ShopAssist</h1>
         <p className="m-0 text-sa-ink-muted">The server may be waking up after a quiet spell. Try again in a moment.</p>
       </div>
       <button type="button" onClick={retry} className={primaryButton}>Try again</button>
