@@ -200,7 +200,7 @@ So a visitor who forges `X-Forwarded-For` changes nothing (it's never read), and
 
 ## Roadmap
 
-ShopAssist was built in six milestones. **All six are done, and Project 1 is complete:** the store and its chat are live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app), and the admin dashboard at [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin).
+Project 1 was built in six milestones, and Milestone 7 added guest chat after it. **All seven are done:** the store and its chat are live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app), and the admin dashboard at [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin).
 
 - [x] **Milestone 1, REST API:** accounts, login, conversations and AI replies, tested and documented (see [API endpoints](#api-endpoints))
 - [x] **Deployment:** live on Render with a Neon PostgreSQL database (see [Deployment](#deployment))
@@ -209,7 +209,7 @@ ShopAssist was built in six milestones. **All six are done, and Project 1 is com
 - [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base instead of editing files (see [Uploading documents](#uploading-documents))
 - [x] **Milestone 5, chat interface:** a chat website for customers (see [Chat frontend](#chat-frontend))
 - [x] **Milestone 6, admin dashboard:** a web dashboard for the store's staff, with "couldn't answer" detection, "answered from" sources and resolving conversations (see [Admin dashboard](#admin-dashboard))
-- [ ] **Milestone 7, guest chat:** visitors chat without an account, within limits that protect the AI quota, and a note beside the chat button points them to it (see [Guest chat](#guest-chat)). Built and tested; it goes live with the next deploy.
+- [x] **Milestone 7, guest chat:** visitors chat without an account, within limits that protect the AI quota, and a note beside the chat button points them to it (see [Guest chat](#guest-chat))
 
 ## For developers
 
