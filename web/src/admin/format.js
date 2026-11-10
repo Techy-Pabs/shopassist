@@ -66,6 +66,9 @@ export function daysAgo(moment, { timeZone, now = new Date() }) {
 // "1 question", "2 questions"
 export const count = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
+// Who started a conversation: their email, or "Guest" (guests have none)
+export const ownerName = (conversation) => (conversation.owner_is_guest ? 'Guest' : conversation.owner_email)
+
 // When a document changed, as the table shows it: "Just now", "Today, 16:41",
 // "27 Oct", or "27 Oct 2025" in another year
 export function updatedAt(moment, { timeZone, now = new Date() }) {

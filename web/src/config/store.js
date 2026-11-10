@@ -13,5 +13,6 @@ export const store = {
 
 export const launcher = {
   label: 'Ask Loom & Lane',
-  invitation: 'Questions about delivery or sizing? Ask us here.',
+  // Slides in beside the button a moment after the page loads
+  note: 'Ask our AI assistant',
 }

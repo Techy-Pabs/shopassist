@@ -91,7 +91,9 @@ def conversation_summaries() -> Select:
     return (
         select(
             Conversation,
+            # None for guests, who are shown as "Guest"
             User.email.label("owner_email"),
+            User.is_guest.label("owner_is_guest"),
             message_count.label("message_count"),
             last_activity.label("last_activity"),
             status.label("status"),
@@ -155,12 +157,17 @@ def stats(db: Session, range_name: str) -> dict:
     zone = settings.store_zone
     previous_since, since, until = range_bounds(range_name, zone)
 
-    # Conversations in this period and the one before
-    conversations, previous = db.execute(
+    # Conversations in this period and the one before, and this period's
+    # conversations started by guests (who are counted in both)
+    conversations, previous, guest_conversations = db.execute(
         select(
             func.count().filter(Conversation.created_at >= since),
             func.count().filter(Conversation.created_at < since),
-        ).where(Conversation.created_at >= previous_since, Conversation.created_at < until)
+            func.count().filter(Conversation.created_at >= since, User.is_guest),
+        )
+        .select_from(Conversation)
+        .join(User, User.id == Conversation.user_id)
+        .where(Conversation.created_at >= previous_since, Conversation.created_at < until)
     ).one()
 
     # Customer questions, and replies that answered (not "couldn't answer";
@@ -182,7 +189,8 @@ def stats(db: Session, range_name: str) -> dict:
     ).one()
 
     documents, last_updated = db.execute(select(func.count(Document.id), func.max(Document.updated_at))).one()
-    customers = db.scalar(select(func.count(User.id)).where(User.role == ROLE_CUSTOMER))
+    # Customer accounts; guests aren't accounts
+    customers = db.scalar(select(func.count(User.id)).where(User.role == ROLE_CUSTOMER, User.is_guest.is_(False)))
 
     # One row per day of the period, including days with no conversations. A
     # conversation's day is its date in the store's time zone (so daylight
@@ -207,6 +215,7 @@ def stats(db: Session, range_name: str) -> dict:
         "since": since,
         "conversations": conversations,
         "previous_conversations": previous,
+        "guest_conversations": guest_conversations,
         "questions": questions,
         "answered": answered,
         "needs_attention": {
@@ -234,9 +243,11 @@ _user_last_message = (
 
 
 def user_summaries() -> Select:
-    """Every user with their conversation count and last activity, newest first.
+    """Every account with its conversation count and last activity, newest first.
 
-    Only these columns: the password hash never leaves the database here.
+    Accounts only: guests aren't listed (the Overview counts their
+    conversations instead). Only these columns: the password hash never
+    leaves the database here.
     """
     return (
         select(
@@ -246,6 +257,7 @@ def user_summaries() -> Select:
         )
         .outerjoin(_user_conversations, _user_conversations.c.user_id == User.id)
         .outerjoin(_user_last_message, _user_last_message.c.user_id == User.id)
+        .where(User.is_guest.is_(False))
         .order_by(User.created_at.desc(), User.id.desc())
     )
 

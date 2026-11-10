@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 
 import { AppRoutes } from '../../Root.jsx'
-import { ADMIN_ME, ATTENTION, STATS, conversation, conversationsBody, statsBody } from '../../test/adminFixtures.js'
+import { ADMIN_ME, ATTENTION, STATS, conversation, conversationsBody, guestConversation, statsBody } from '../../test/adminFixtures.js'
 import { callsTo, deferred, fakeFetch } from '../../test/fakeApi.js'
 import { setMobile } from '../../test/setup.js'
 import { ADMIN_TOKEN_KEY } from '../session.jsx'
@@ -334,6 +334,7 @@ describe('on a phone', () => {
       ['Answered186', '/admin/conversations'],
       ['Documents9', '/admin/knowledge'],
       ['Customers31', '/admin/customers'],
+      ['Guest conversations12', '/admin/conversations'],
     ])
     expect(amber.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
@@ -357,5 +358,31 @@ describe('on a phone', () => {
   it('"Needs" for one conversation', async () => {
     open({ 'GET /admin/stats': { status: 200, body: statsBody({ needs_attention: { total: 1, couldnt_answer: 0, unanswered: 1 } }) } })
     await waitFor(() => expect(screen.getByRole('link', { name: /Needs your attention/ })).toHaveTextContent('1Needs your attention1 unanswered'))
+  })
+})
+
+describe('guests', () => {
+  it('guest conversations are counted on their own, on the Conversations card', async () => {
+    open()
+
+    expect(card(await numbers(), 'Conversations')).toHaveTextContent('Guest conversations: 12')
+  })
+
+  it('a guest in the attention list is "Guest", not an email', async () => {
+    open({ 'GET /admin/conversations': { status: 200, body: conversationsBody([guestConversation({ attention_reason: 'unanswered' })]) } })
+
+    const attention = await screen.findByRole('link', { name: /Is pickup free in Lekki/ })
+    expect(attention).toHaveTextContent('Guest')
+    expect(attention).not.toHaveTextContent('null')
+  })
+
+  it('on a phone, guest conversations have their own number, across the full width', async () => {
+    setMobile(true)
+    open()
+
+    const guests = card(await numbers(), 'Guest conversations')
+    expect(guests).toHaveTextContent('Guest conversations12')
+    expect(guests).toHaveClass('col-span-2')
+    expect(card(await numbers(), 'Customers')).toHaveTextContent('Customers31')
   })
 })

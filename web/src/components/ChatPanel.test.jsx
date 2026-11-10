@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { authHeader, callsTo, fakeFetch } from '../test/fakeApi.js'
-import { scrollPastHero, setMobile } from '../test/setup.js'
+import { setMobile } from '../test/setup.js'
 import { launcherButton } from '../test/launcher.js'
 
 const TOKEN_KEY = 'loomlane.token'
@@ -16,8 +16,11 @@ function setup(routes = {}) {
   return { fetch, user, launcher: () => launcherButton() }
 }
 
+// Opens the panel and waits for it to settle: without a token it first tries
+// to start a guest (the fake API answers that guest chat is off)
 async function openPanel(user) {
   await user.click(launcherButton())
+  await waitFor(() => expect(screen.queryByText('Starting the chat…')).not.toBeInTheDocument())
   return screen.getByRole('dialog', { name: 'Loom & Lane' })
 }
 
@@ -99,17 +102,6 @@ describe('opening and closing the panel', () => {
 
     await user.tab({ shift: true })
     expect(within(panel).getByRole('link', { name: 'support@loomandlane.example' })).toHaveFocus()
-  })
-
-  it('hides the invitation once the panel has been opened', async () => {
-    const { user } = setup()
-    act(() => scrollPastHero())
-    expect(screen.getByText('Questions about delivery or sizing? Ask us here.')).toBeInTheDocument()
-
-    await openPanel(user)
-    await user.keyboard('{Escape}')
-
-    expect(screen.queryByText('Questions about delivery or sizing? Ask us here.')).not.toBeInTheDocument()
   })
 })
 

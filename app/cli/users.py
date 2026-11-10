@@ -29,6 +29,10 @@ def database_label() -> str:
     return f"{url.host}{port}/{url.database}"
 
 
+def find_user(db, email: str) -> User | None:
+    return db.scalar(select(User).where(User.email == email))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Promote or demote a ShopAssist user.")
     parser.add_argument("action", choices=["promote", "demote"])
@@ -41,10 +45,15 @@ def main() -> int:
 
     print(f"Database: {database_label()}")
     with SessionLocal() as db:
-        user = db.scalar(select(User).where(User.email == email))
+        user = find_user(db, email)
         if user is None:
             print(f"No user with the email {email}. Nothing was changed.")
             print("Accounts are never created by this command: register first, then promote.")
+            return 1
+        if user.is_guest:
+            # Guests have no email, so this can't normally happen; the
+            # database refuses a guest admin too (ck_users_guest_is_anonymous_customer)
+            print("That is a guest, not an account. Guests can never be admins. Nothing was changed.")
             return 1
         if user.role == new_role:
             print(f"{email} is already {'an admin' if new_role == ROLE_ADMIN else 'a customer'}. Nothing was changed.")

@@ -2,12 +2,15 @@
 //
 // Every call returns a result instead of throwing:
 //   { ok: true, status, data }
-//   { ok: false, kind, status, message, fieldErrors }
-// where kind is one of:
+//   { ok: false, kind, status, message, fieldErrors, code, retryAfter }
+// code is the API's reason when it gives one (such as "guest_limit_reached"),
+// and retryAfter the seconds from a Retry-After header, or null.
+// kind is one of:
 //   "session-ended"  a call made with a token got 401: the session is over
 //   "unauthorized"   a call made without a token got 401 (e.g. wrong password)
 //   "validation"     422: fieldErrors maps each field to the server's message
 //   "unavailable"    502: the assistant (or embedding service) didn't answer
+//   "rate-limited"   429: a limit was reached (see code)
 //   "network"        no response at all (offline, server asleep, CORS, timeout)
 //   "error"          any other failure, with the server's message
 
@@ -61,20 +64,30 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
         signal,
       })
     } catch (error) {
-      return { ok: false, kind: 'network', status: 0, message: NETWORK_MESSAGE, fieldErrors: {}, aborted: error?.name === 'AbortError' }
+      return {
+        ok: false, kind: 'network', status: 0, message: NETWORK_MESSAGE, fieldErrors: {}, code: null, retryAfter: null,
+        aborted: error?.name === 'AbortError',
+      }
     }
 
     const data = response.status === 204 ? null : await readJson(response)
     if (response.ok) return { ok: true, status: response.status, data }
 
     const detail = data?.detail
-    const failure = { ok: false, status: response.status, fieldErrors: {} }
+    const retryAfter = Number.parseInt(response.headers?.get?.('Retry-After') ?? '', 10)
+    const failure = {
+      ok: false, status: response.status, fieldErrors: {},
+      code: typeof data?.code === 'string' ? data.code : null,
+      retryAfter: Number.isNaN(retryAfter) ? null : retryAfter,
+    }
 
     if (response.status === 401) {
       // Only a call made WITH a token means the session ended. Without one
       // (signing in), 401 just means the email or password was wrong.
       if (token) {
-        onSessionEnded?.()
+        // With the token used, so a late 401 from a session that has already
+        // ended (or been replaced) can be ignored
+        onSessionEnded?.(token)
         return { ...failure, kind: 'session-ended', message: SESSION_ENDED_MESSAGE }
       }
       return { ...failure, kind: 'unauthorized', message: typeof detail === 'string' ? detail : FALLBACK_MESSAGE }
@@ -84,6 +97,9 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
       const fieldErrors = fieldErrorsFrom(detail)
       const message = typeof detail === 'string' ? detail : Object.values(fieldErrors)[0] ?? FALLBACK_MESSAGE
       return { ...failure, kind: 'validation', fieldErrors, message }
+    }
+    if (response.status === 429) {
+      return { ...failure, kind: 'rate-limited', message: typeof detail === 'string' ? detail : FALLBACK_MESSAGE }
     }
     if (response.status === 502) {
       return { ...failure, kind: 'unavailable', message: typeof detail === 'string' ? detail : UNAVAILABLE_MESSAGE }
@@ -97,6 +113,10 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
     login: (email, password) => request('POST', '/auth/login', { auth: false, body: { email, password } }),
     register: (email, password) => request('POST', '/auth/register', { auth: false, body: { email, password } }),
     me: () => request('GET', '/auth/me'),
+    // Chat without an account: a guest and its token (403 when guest chat is off)
+    createGuest: () => request('POST', '/auth/guest', { auth: false }),
+    // { enabled }: whether guest chat is on (creates nothing)
+    guestChatStatus: () => request('GET', '/auth/guest', { auth: false }),
     // The customer's conversations, most recent activity first
     listConversations: ({ limit = 50 } = {}) => request('GET', `/conversations?limit=${limit}`),
     // The conversation is created lazily, on the customer's first message

@@ -14,6 +14,7 @@ import argparse
 import json
 import logging
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -49,15 +50,23 @@ def search_text_for(q: dict) -> str:
     return build_search_text([q["previous"], q["question"]] if q.get("previous") else [q["question"]])
 
 
+def normalise(text: str) -> str:
+    """Lower case, straight apostrophes, and every run of whitespace as one
+    plain space. Models sometimes write a no-break space (U+00A0) or a narrow
+    no-break space (U+202F), as in "24\u202fhours", which a plain "24 hours"
+    wouldn't match."""
+    return re.sub(r"\s+", " ", text.replace("’", "'")).lower()
+
+
 def check_reply(reply: str, q: dict) -> list[str]:
     """Problems with the reply; an empty list means it passed."""
-    text = reply.lower().replace("’", "'")
+    text = normalise(reply)
     problems = []
     for options in q.get("must_contain", []):
-        if not any(option.lower() in text for option in options):
+        if not any(normalise(option) in text for option in options):
             problems.append("missing " + " / ".join(repr(o) for o in options))
     for banned in q.get("must_not_contain", []):
-        if banned.lower() in text:
+        if normalise(banned) in text:
             problems.append(f"contains {banned!r}")
     return problems
 

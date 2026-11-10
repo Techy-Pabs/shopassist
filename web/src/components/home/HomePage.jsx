@@ -30,7 +30,8 @@ function SectionHeading({ id, children }) {
   )
 }
 
-// Tells the page when the visitor has scrolled past the hero (and back)
+// Tells the page whether the hero's buttons have scrolled off the top of
+// the screen (and back), so the chat's note can wait for them on phones
 function useScrolledPast(ref, onChange) {
   useEffect(() => {
     if (!onChange) return undefined
@@ -44,16 +45,16 @@ function useScrolledPast(ref, onChange) {
   }, [ref, onChange])
 }
 
-function Hero({ onPastHero }) {
-  const ref = useRef(null)
-  useScrolledPast(ref, onPastHero)
+function Hero({ onPastButtons }) {
+  const buttons = useRef(null)
+  useScrolledPast(buttons, onPastButtons)
   return (
-    <section ref={ref} className="mx-auto box-content flex max-w-page flex-col gap-5 px-4 pb-10 pt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-14 sm:px-12 sm:pb-18 sm:pt-16">
+    <section className="mx-auto box-content flex max-w-page flex-col gap-5 px-4 pb-10 pt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-14 sm:px-12 sm:pb-18 sm:pt-16">
       <div className="flex min-w-0 flex-col gap-5 sm:shrink sm:grow sm:basis-home-copy-basis sm:gap-6">
         <p className="m-0 mt-2 text-eyebrow-sm uppercase text-clay sm:mt-0 sm:text-eyebrow">{hero.eyebrow}</p>
         <h1 className="m-0 font-serif text-display-home-sm sm:text-display-home">{hero.title}</h1>
         <p className="m-0 text-body-lead-sm text-ink-muted sm:max-w-home-text sm:text-body-lead-lg">{hero.text}</p>
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+        <div ref={buttons} className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
           <a href={`#${hero.primary.section}`} className={`${button} bg-indigo text-surface-100 hover:text-surface-100`}>
             {hero.primary.label}
           </a>
@@ -80,7 +81,8 @@ function Hero({ onPastHero }) {
           firstScreen
           className="absolute bottom-0 left-0 box-content h-home-hero-inset-height-sm w-home-hero-inset-width-sm rounded-sm border-frame-sm border-surface-100 sm:h-home-hero-inset-height sm:w-home-hero-inset-width sm:border-frame"
         />
-        <p className="absolute bottom-6 right-6 m-0 hidden flex-col gap-0.5 rounded-lg rounded-br-sm border border-sand bg-surface-raised px-4.5 py-3.5 text-ink sm:flex">
+        {/* At the top of the photo, clear of the note beside the chat button */}
+        <p className="absolute right-6 top-6 m-0 hidden flex-col gap-0.5 rounded-lg rounded-br-sm border border-sand bg-surface-raised px-4.5 py-3.5 text-ink sm:flex">
           <span className="text-caption font-semibold text-ink-muted">{hero.inPicture.label}</span>
           <span className="font-serif text-title-chat">{hero.inPicture.name}</span>
           <span className="text-body-small">{hero.inPicture.price}</span>
@@ -247,13 +249,13 @@ function Help({ onAsk }) {
   )
 }
 
-// onAsk opens the chat; onPastHero(true or false) follows the scroll
-export default function HomePage({ onAsk, onPastHero }) {
+// onAsk opens the chat; onPastHeroButtons(true or false) follows the scroll
+export default function HomePage({ onAsk, onPastHeroButtons }) {
   return (
     <>
       <SiteHeader onAsk={onAsk} />
       <main>
-        <Hero onPastHero={onPastHero} />
+        <Hero onPastButtons={onPastHeroButtons} />
         <Services />
         <Collections />
         <JustArrived />

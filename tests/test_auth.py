@@ -7,7 +7,8 @@ def test_register_succeeds(register):
     assert response.status_code == 201
     body = response.json()
     assert body["email"] == "alice@example.com"
-    assert set(body) == {"id", "email", "role", "created_at"}
+    assert set(body) == {"id", "email", "role", "is_guest", "created_at"}
+    assert body["is_guest"] is False
 
 
 def test_register_duplicate_email_returns_400(register):
@@ -83,5 +84,7 @@ def test_me_returns_current_user_without_password_hash(client, auth_headers):
     assert response.status_code == 200
     body = response.json()
     assert body["email"] == "alice@example.com"
-    assert set(body) == {"id", "email", "role", "created_at"}
+    # questions_left is for guests; an account has no limit
+    assert set(body) == {"id", "email", "role", "is_guest", "questions_left", "question_limit", "created_at"}
+    assert (body["is_guest"], body["questions_left"]) == (False, None)
     assert "argon2" not in response.text

@@ -44,7 +44,15 @@ describe('the Tailwind theme comes from design/tokens.json', () => {
 
 describe('the homepage additions', () => {
   it('names each border width after its token', () => {
-    expect(theme.borderWidth).toEqual({ 0: '0', DEFAULT: '1px', frame: '8px', 'frame-sm': '6px' })
+    expect(theme.borderWidth).toEqual({ 0: '0', DEFAULT: '1px', frame: '8px', 'frame-sm': '6px', badge: '2px', ring: '3px' })
+  })
+
+  it("times the launcher's note and ring from the motion tokens: the ring pulses three times as the note lands", () => {
+    expect(theme.animation['note-in']).toBe('note-in 400ms ease-out')
+    expect(theme.animation['launcher-ring']).toBe('launcher-ring 1600ms ease-out 400ms 3')
+    expect(theme.animation['launcher-ring-round']).toBe('launcher-ring-round 1600ms ease-out 400ms 3')
+    expect(theme.keyframes['launcher-ring'].to).toEqual({ transform: 'scale(1.35)', opacity: '0' })
+    expect(theme.keyframes['launcher-ring-round'].to).toEqual({ transform: 'scale(1.45)', opacity: '0' })
   })
 
   it('builds the auto-fit grids from the grid size tokens, keeping the numbered columns', () => {

@@ -1,6 +1,7 @@
+from ipaddress import IPv4Network, IPv6Network, ip_network
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -63,6 +64,41 @@ class Settings(BaseSettings):
     # The store's time zone (an IANA name such as Africa/Lagos): where the
     # admin dashboard's days start and end
     store_timezone: str = "UTC"
+
+    # Guest chat: visitors chat without an account, within limits that protect
+    # the AI quota. With it off, POST /auth/guest and guests' messages get 403.
+    guest_chat_enabled: bool = True
+    # Customer messages one guest may send in total...
+    guest_message_limit: int = Field(10, ge=1)
+    # ...all guests together may send per day (in STORE_TIMEZONE)...
+    guest_daily_limit: int = Field(15, ge=1)
+    # ...and one guest may send per minute
+    guest_messages_per_minute: int = Field(5, ge=1)
+    # How long a guest's token lasts; the token is the only key to their chat
+    guest_token_hours: int = Field(24, ge=1)
+    # Guests and their conversations are deleted after this many days
+    guest_retention_days: int = Field(7, ge=1)
+    # Guests one client IP may create per hour (counted in memory)
+    guest_create_per_hour: int = Field(5, ge=1)
+    # Connections from these networks are Render's proxy, so their
+    # CF-Connecting-IP header (set by Cloudflare) is the visitor's address.
+    # Anyone else's is ignored. See app/services/client_ip.py.
+    trusted_proxy_networks: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
+
+    @field_validator("trusted_proxy_networks")
+    @classmethod
+    def valid_networks(cls, value: str) -> str:
+        for network in value.split(","):
+            if network.strip():
+                try:
+                    ip_network(network.strip())
+                except ValueError:
+                    raise ValueError(f"TRUSTED_PROXY_NETWORKS must be IP networks such as 10.0.0.0/8, not {network.strip()!r}")
+        return value
+
+    @property
+    def trusted_proxy_network_list(self) -> list[IPv4Network | IPv6Network]:
+        return [ip_network(n.strip()) for n in self.trusted_proxy_networks.split(",") if n.strip()]
 
     @field_validator("store_timezone")
     @classmethod

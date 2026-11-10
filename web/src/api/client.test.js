@@ -35,6 +35,7 @@ describe('API client', () => {
 
     expect(result).toMatchObject({ ok: false, kind: 'session-ended', message: SESSION_ENDED_MESSAGE })
     expect(onSessionEnded).toHaveBeenCalledOnce()
+    expect(onSessionEnded).toHaveBeenCalledWith('tok')
   })
 
   it('a 401 without a token is just a wrong email or password', async () => {

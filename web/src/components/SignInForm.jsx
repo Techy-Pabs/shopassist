@@ -49,9 +49,11 @@ function Field({ id, label, type, value, onChange, error, hint, autoComplete, in
   )
 }
 
-export default function SignInForm({ emailRef }) {
+// initialMode: "sign-in" or "create". onBack: a guest who came here from
+// their chat can go back to it (signing in replaces the guest).
+export default function SignInForm({ emailRef, initialMode = 'sign-in', onBack }) {
   const { api, signIn, notice } = useSession()
-  const [mode, setMode] = useState('sign-in')
+  const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
@@ -120,6 +122,15 @@ export default function SignInForm({ emailRef }) {
 
   return (
     <form noValidate onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-8">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="-my-3 flex min-h-control cursor-pointer items-center self-start border-0 bg-transparent p-0 font-sans text-body-small font-semibold text-clay underline hover:text-ink"
+        >
+          Back to the chat
+        </button>
+      )}
       <div className="flex flex-col gap-2">
         <h3 className="m-0 font-serif text-heading text-ink">Sign in to chat</h3>
         <p className="m-0 text-body text-ink-muted">

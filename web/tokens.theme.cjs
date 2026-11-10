@@ -146,6 +146,22 @@ function buildTheme(tokens, admin = null) {
         from: { opacity: '0', transform: `translateY(${spacing['6']})` },
         to: { opacity: '1', transform: 'translateY(0)' },
       },
+      // The launcher note slides in from the side, by space-2 (Launcher mockups)
+      'note-in': {
+        from: { opacity: '0', transform: `translateX(${spacing['2']})` },
+        to: { opacity: '1', transform: 'translateX(0)' },
+      },
+      // The ring around the launcher grows and fades: a little more around
+      // the round phone button than the desktop pill, as in the two mockups
+      ...Object.fromEntries(
+        [['launcher-ring', '1.35'], ['launcher-ring-round', '1.45']].map(([name, scale]) => [
+          name,
+          {
+            from: { transform: 'scale(1)', opacity: byName(tokens.opacity.tokens)['ring-start'] },
+            to: { transform: `scale(${scale})`, opacity: '0' },
+          },
+        ]),
+      ),
       // The typing dots brighten in turn: each is bright for a third of the cycle
       ...Object.fromEntries(
         [1, 2, 3].map((dot) => {
@@ -159,6 +175,14 @@ function buildTheme(tokens, admin = null) {
     animation: {
       none: 'none',
       'panel-in': `panel-in ${byName(tokens.motion.tokens)['panel-slide']} ease-out`,
+      'note-in': `note-in ${byName(tokens.motion.tokens)['note-slide']} ease-out`,
+      // Three pulses, starting as the note finishes sliding in
+      ...Object.fromEntries(
+        ['launcher-ring', 'launcher-ring-round'].map((name) => {
+          const motion = byName(tokens.motion.tokens)
+          return [name, `${name} ${motion['ring-pulse']} ease-out ${motion['note-slide']} 3`]
+        }),
+      ),
       ...Object.fromEntries(
         [1, 2, 3].map((dot) => [`typing-${dot}`, `typing-${dot} ${byName(tokens.motion.tokens)['typing-cycle']} ease-in-out infinite`]),
       ),

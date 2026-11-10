@@ -1,12 +1,38 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { useIsMobile } from '../hooks/useIsMobile.js'
+import { GIVE_UP_AFTER, useWake } from '../hooks/useWake.js'
 import { useSession } from '../session/SessionContext.jsx'
 import ChatView from './ChatView.jsx'
 import { loadConversationId, saveConversationId } from '../lib/conversationStore.js'
 import HistoryList from './HistoryList.jsx'
 import PanelHeader, { HistoryHeader } from './PanelHeader.jsx'
 import SignInForm from './SignInForm.jsx'
+import WakingScreen from './WakingScreen.jsx'
+
+// Opening the chat without a token starts a guest (POST /auth/guest), once
+// the API is awake. If guest chat is off or the start fails, the session
+// marks guests unavailable and the panel shows sign in instead.
+function GuestStart() {
+  const { api, startGuest } = useSession()
+  const wake = useWake(api)
+  const started = useRef(false)
+
+  // Once the API is awake, or the wait has given up (the start then fails,
+  // and sign in shows, as before guests)
+  useEffect(() => {
+    if (started.current || (wake.state !== 'ready' && wake.state !== 'unavailable')) return
+    started.current = true
+    startGuest()
+  }, [wake.state, startGuest])
+
+  if (wake.state === 'waking') return <WakingScreen elapsed={wake.elapsed} total={GIVE_UP_AFTER} />
+  return (
+    <p role="status" className="m-0 flex flex-1 items-center justify-center p-8 text-body text-ink-muted">
+      Starting the chat…
+    </p>
+  )
+}
 
 // The header's subtitle follows the chat, as in the mockups
 const SUBTITLES = {
@@ -21,7 +47,11 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), texta
 // The chat panel: full screen and modal below the mobile breakpoint, a
 // floating non-modal panel above it. Escape closes it.
 export default function ChatPanel({ onClose }) {
-  const { api, isSignedIn } = useSession()
+  const { isSignedIn, isGuest, hasAccount, notice, guest, refreshUsage, api, token } = useSession()
+  // A guest who chose to sign in or create an account: "sign-in" or "create"
+  const [signInMode, setSignInMode] = useState(null)
+  // That form's email field (the guest's chat stays mounted, hidden, with its own input)
+  const signInRef = useRef(null)
   const isMobile = useIsMobile()
   const titleId = useId()
   const panelRef = useRef(null)
@@ -51,6 +81,11 @@ export default function ChatPanel({ onClose }) {
     if (!isSignedIn) setView('chat')
   }, [isSignedIn])
 
+  // Signing in in place of a guest leaves the guest's sign in form
+  useEffect(() => {
+    if (!isGuest) setSignInMode(null)
+  }, [isGuest])
+
   function showHistory() {
     setView('history')
     setFocusNext('back')
@@ -70,16 +105,22 @@ export default function ChatPanel({ onClose }) {
     setFocusNext('input')
   }
 
-  // Move focus into the panel when it opens: the email field when signed
-  // out, the question input when signed in, otherwise the panel itself
+  // Move focus into the panel when it opens, and when what it shows changes:
+  // the email field when signing in, the question input when chatting, and
+  // otherwise (or when that can't take focus, such as a guest's message box
+  // disabled at the limit) the panel itself
   useEffect(() => {
-    ;(focusRef.current ?? panelRef.current)?.focus()
-  }, [isSignedIn])
+    const target = (isGuest && signInMode ? signInRef : focusRef).current
+    target?.focus()
+    if (!target || document.activeElement !== target) panelRef.current?.focus()
+  }, [isSignedIn, isGuest, signInMode, guest.unavailable])
 
   // A stored token may have expired since it was saved: check it once when
-  // the panel opens. A 401 signs out with the session message.
+  // the panel opens. A 401 signs out with the session message (or, for a
+  // guest, starts a new guest). For a guest it also counts the questions left.
   useEffect(() => {
-    if (isSignedIn) api.me()
+    if (isGuest) refreshUsage()
+    else if (isSignedIn) api.me()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -125,21 +166,28 @@ export default function ChatPanel({ onClose }) {
       ) : (
         <PanelHeader
           titleId={titleId}
-          subtitle={isSignedIn ? SUBTITLES[chatStatus] : 'AI assistant'}
+          subtitle={isSignedIn && !signInMode ? SUBTITLES[chatStatus] : 'AI assistant'}
           onClose={onClose}
-          // Not while the assistant is waking: there is nothing to list yet
-          onHistory={isSignedIn && chatStatus !== 'connecting' ? showHistory : undefined}
+          // Accounts only (guests have no history), and not while the
+          // assistant is waking: there is nothing to list yet
+          onHistory={hasAccount && chatStatus !== 'connecting' ? showHistory : undefined}
           historyRef={historyButtonRef}
         />
       )}
-      {!isSignedIn && <SignInForm emailRef={focusRef} />}
+      {/* Signed out: a guest starts straight away, unless guest chat is off
+          or failed, or an account's session has just ended (sign in again) */}
+      {!isSignedIn && (notice || guest.unavailable ? <SignInForm emailRef={focusRef} /> : <GuestStart />)}
+      {isGuest && signInMode && (
+        <SignInForm key={signInMode} emailRef={signInRef} initialMode={signInMode} onBack={() => setSignInMode(null)} />
+      )}
       {isSignedIn && (
-        // hidden, not unmounted, while the list shows
-        <div className={view === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-          <ChatView key={chatKey} inputRef={focusRef} onStatus={setChatStatus} />
+        // hidden, not unmounted, while the list or a guest's sign in shows
+        <div className={view === 'chat' && !(isGuest && signInMode) ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          {/* A new token (signing in in place of a guest) starts the chat afresh */}
+          <ChatView key={`${chatKey}:${token}`} inputRef={focusRef} onStatus={setChatStatus} onSignIn={setSignInMode} />
         </div>
       )}
-      {isSignedIn && view === 'history' && (
+      {hasAccount && view === 'history' && (
         <HistoryList
           currentId={loadConversationId()}
           onOpen={(id) => switchConversation(id)}

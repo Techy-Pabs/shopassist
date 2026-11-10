@@ -9,6 +9,16 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    email: str
+    # None for guests, who have no account
+    email: str | None
     role: str
+    is_guest: bool
     created_at: datetime
+
+
+class MeResponse(UserResponse):
+    # Guests only: customer messages they can still send (GUEST_MESSAGE_LIMIT
+    # minus those sent). None for accounts, which have no limit.
+    questions_left: int | None = None
+    # Guests only: how many they could send in all (GUEST_MESSAGE_LIMIT)
+    question_limit: int | None = None

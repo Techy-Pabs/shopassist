@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { useIsMobile } from '../../hooks/useIsMobile.js'
-import { count, dayAndTime, longDate, shortTime, startedAt, storeDay } from '../format.js'
+import { count, dayAndTime, longDate, ownerName, shortTime, startedAt, storeDay } from '../format.js'
 import { FilterTabs, Paging, SearchBox } from '../controls.jsx'
 import { BackIcon, CheckIcon, ReopenIcon, WarningIcon } from '../icons.jsx'
 import { useAdminSession } from '../session.jsx'
@@ -127,7 +127,7 @@ function ConversationList({ list, request, selectedId, timeZone, ids, onPage, on
                   }`}
                 >
                   <span className="flex justify-between gap-sa-3">
-                    <span className="min-w-0 break-all font-semibold">{c.owner_email}</span>
+                    <span className="min-w-0 break-all font-semibold">{ownerName(c)}</span>
                     {timeZone && (
                       <time dateTime={c.last_activity} className="shrink-0 whitespace-nowrap text-sa-caption text-sa-ink-muted">
                         {shortTime(c.last_activity, { timeZone })}
@@ -331,7 +331,7 @@ function Thread({ id, thread, timeZone, backTo, phone, onChanged, focusOnOpen, o
   const { conversation, messages } = thread.data
   const side = phone ? 'px-sa-4' : 'px-sa-6'
   return (
-    <section aria-label={`Conversation with ${conversation.owner_email}`} className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={`Conversation with ${ownerName(conversation)}`} className="flex min-h-0 flex-1 flex-col">
       <div className={`flex flex-wrap items-center justify-between gap-sa-3 border-b border-sa-line bg-sa-surface ${side} py-sa-3.5`}>
         <div className="flex min-w-0 flex-col">
           <h2 ref={heading} tabIndex={-1} className="m-0 break-words text-sa-heading outline-none">{titleOf(conversation)}</h2>
@@ -369,8 +369,12 @@ function CustomerPanel({ customer, timeZone, request, phone }) {
       className={`flex flex-col gap-sa-5 bg-sa-surface p-sa-5 ${phone ? 'border-t border-sa-line' : 'min-w-0 max-w-sa-panel grow basis-sa-panel-basis overflow-y-auto border-l border-sa-line'}`}>
       <div className="flex flex-col gap-sa-1">
         <h2 className={overline}>Customer</h2>
-        <span className="break-all font-semibold">{customer.email}</span>
-        {timeZone && <span className="text-sa-small text-sa-ink-muted">Account since {longDate(customer.joined, timeZone)}</span>}
+        <span className="break-all font-semibold">{customer.is_guest ? 'Guest' : customer.email}</span>
+        {timeZone && (
+          <span className="text-sa-small text-sa-ink-muted">
+            {customer.is_guest ? `No account · chatting since ${longDate(customer.joined, timeZone)}` : `Account since ${longDate(customer.joined, timeZone)}`}
+          </span>
+        )}
       </div>
       <dl className="m-0 flex flex-col gap-sa-2.5 text-sa-small">
         {facts.map(([label, value]) => (

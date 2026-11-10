@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.checks import check_embedding_dimensions
 from app.db.session import engine
 from app.routers import admin, auth, conversations
+from app.services.guests import GuestChatError
 
 # Show INFO logs from our own modules (e.g. which AI model answered)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -50,6 +51,13 @@ async def reject_oversized_uploads(request: Request, call_next):
     return await call_next(request)
 
 
+@app.exception_handler(GuestChatError)
+def guest_chat_error_handler(request: Request, exc: GuestChatError):
+    # "code" lets the frontend show the right state; "detail" is readable
+    headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message, "code": exc.code}, headers=headers)
+
+
 @app.exception_handler(RequestValidationError)
 def validation_error_handler(request: Request, exc: RequestValidationError):
     # FastAPI's default 422 response echoes back the invalid value, which
@@ -67,6 +75,8 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
+    # Lets the chat read how long to wait after a 429
+    expose_headers=["Retry-After"],
     max_age=600,
 )
 

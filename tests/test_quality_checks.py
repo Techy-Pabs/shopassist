@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from app.cli.quality import check_reply, load_questions
 
 
@@ -9,6 +11,26 @@ def test_required_facts_and_banned_phrases():
     assert check_reply("It takes 3-5 business days.", question) == []
     assert check_reply("It takes a week.", question) == ["missing '3 to 5' / '3-5'"]
     assert check_reply("3 to 5 days, and 90% off!", question) == ["contains '90% off'"]
+
+
+@pytest.mark.parametrize("space", [
+    "\u00a0",  # no-break space
+    "\u202f",  # narrow no-break space (the pickup reply on 9 November 2026)
+    "\u2009",  # thin space
+    "\t",
+    "  ",
+])
+def test_any_kind_of_space_matches_a_plain_one(space):
+    question = {"must_contain": [["24 hours"]], "must_not_contain": ["90% off"]}
+
+    assert check_reply(f"Pickup orders are ready within 24{space}hours.", question) == []
+    assert check_reply(f"Ready in 24 hours, and 90%{space}off!", question) == ["contains '90% off'"]
+
+
+def test_the_pickup_reply_that_failed_now_passes():
+    reply = "Yes, you can collect your order at our Lekki Phase 1 pickup point for free. Pickup orders are ready within 24\u202fhours."
+
+    assert check_reply(reply, {"must_contain": [["24 hours"]]}) == []
 
 
 def test_internal_terms_are_banned_in_every_question(tmp_path):

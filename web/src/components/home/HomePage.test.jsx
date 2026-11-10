@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import App from '../../App.jsx'
-import { fakeFetch } from '../../test/fakeApi.js'
+import { callsTo, fakeFetch } from '../../test/fakeApi.js'
 import { launcherButton } from '../../test/launcher.js'
-import { scrollPastHero, setMobile } from '../../test/setup.js'
+import { scrollPastHero, setMobile, showTheNote } from '../../test/setup.js'
 
 const IMAGES = resolve(process.cwd(), 'public/images')
 const GITHUB = 'https://github.com/Techy-Pabs/shopassist'
@@ -252,37 +252,232 @@ describe('the demo strip', () => {
   })
 })
 
-describe('the invitation bubble', () => {
-  const invitation = () => screen.queryByText('Questions about delivery or sizing? Ask us here.')
+describe('the note beside the chat button', () => {
+  const NOTE = 'Ask our AI assistant'
+  const region = () => screen.getByRole('complementary', { name: 'Chat' })
+  const dismiss = () => within(region()).queryByRole('button', { name: 'Dismiss the note' })
+  const badge = () => within(region()).queryByText('1')
+  const ring = () => region().querySelector('[class*="animate-launcher-ring"]')
+  // The badge's words are hidden text inside the button. jsdom's name
+  // calculation, like Chrome's, puts a space where they join ("Lane , 1");
+  // screen readers read it the same either way
+  const withBadge = /^Ask Loom & Lane ?, 1 new message$/
+  // The visible note (its text is also in the status region, for screen readers)
+  const note = () => within(region()).queryAllByText(NOTE).find((el) => el.getAttribute('aria-hidden') === 'true')
 
-  it('waits until the visitor has scrolled past the hero; the launcher is always there', () => {
-    setup()
-    expect(invitation()).not.toBeInTheDocument()
-    expect(launcherButton()).toBeInTheDocument()
+  // Only the timers move by hand; userEvent waits on the same clock
+  beforeEach(() => {
+    showTheNote()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+  afterEach(() => vi.useRealTimers())
 
-    act(() => scrollPastHero())
-    expect(invitation()).toBeInTheDocument()
+  // Plain events: with fake timers, the async helpers would wait on a timer
+  // that never runs
+  // Guest chat on, so a greeting is waiting and the badge can show
+  const GUEST_CHAT_ON = { 'GET /auth/guest': { status: 200, body: { enabled: true } } }
+  const start = (routes = GUEST_CHAT_ON) => render(<App fetchImpl={fakeFetch(routes)} />)
+  // Lets the answer to GET /auth/guest arrive
+  const settle = () => act(async () => {})
+  const closeChat = () => fireEvent.click(screen.getByRole('button', { name: 'Close chat' }))
+  const wait = (ms) => act(() => vi.advanceTimersByTime(ms))
 
-    act(() => scrollPastHero(false)) // back up to the hero
-    expect(invitation()).not.toBeInTheDocument()
-    expect(launcherButton()).toBeInTheDocument()
+  it('appears 2 seconds after the page loads, with the "1" badge and the ring', async () => {
+    start()
+    await settle()
+    wait(1999)
+    expect(dismiss()).not.toBeInTheDocument()
+    expect(badge()).not.toBeInTheDocument()
+    expect(launcherButton()).toHaveAccessibleName('Ask Loom & Lane')
+
+    wait(1)
+
+    expect(note()).toBeVisible()
+    expect(dismiss()).toBeInTheDocument()
+    expect(badge()).toBeInTheDocument()
+    expect(ring()).toBeInTheDocument()
+    // The badge is part of the button's name while it shows
+    expect(launcherButton()).toHaveAccessibleName(withBadge)
   })
 
-  it('appears with an animation only when motion is welcome', () => {
-    setup()
-    act(() => scrollPastHero())
+  it('is announced politely once, and focus stays where it was', () => {
+    start()
+    const status = within(region()).getByRole('status')
+    expect(status).toBeEmptyDOMElement() // present from the start, so the change is announced
 
-    expect(invitation()).toHaveClass('motion-safe:animate-panel-in')
-    expect(invitation().className).not.toMatch(/(^|\s)animate-/)
+    wait(2000)
+
+    expect(status).toHaveTextContent(NOTE)
+    // The visible copy is hidden from screen readers, so it isn't read twice
+    expect(within(region()).getAllByText(NOTE)).toHaveLength(2)
+    expect(within(region()).getAllByText(NOTE).filter((el) => !el.closest('[aria-hidden="true"]'))).toEqual([status])
+    expect(document.body).toHaveFocus()
   })
 
-  it('stays away once the chat has been opened', async () => {
-    const { user } = setup()
-    act(() => scrollPastHero())
-    await user.click(launcherButton())
-    await user.keyboard('{Escape}')
+  describe('the "1" badge only shows when a greeting really is waiting', () => {
+    const offline = { 'GET /auth/guest': () => new TypeError('Failed to fetch') }
 
-    act(() => scrollPastHero())
-    expect(invitation()).not.toBeInTheDocument()
+    it.each([
+      ['guest chat is off', {}],
+      ["the API can't be reached", offline],
+      ['the API has an error', { 'GET /auth/guest': { status: 500, body: { detail: 'Something went wrong.' } } }],
+    ])('no badge when %s; the note still shows', async (_, routes) => {
+      start(routes)
+      await settle()
+      wait(2000)
+
+      expect(note()).toBeVisible()
+      expect(badge()).not.toBeInTheDocument()
+      expect(launcherButton()).toHaveAccessibleName('Ask Loom & Lane')
+    })
+
+    it('no badge when the chat will reopen a conversation instead of greeting', async () => {
+      window.sessionStorage.setItem('loomlane.token', 'token-123')
+      window.sessionStorage.setItem('loomlane.conversationId', '42')
+      start()
+      await settle()
+      wait(2000)
+
+      expect(note()).toBeVisible()
+      expect(badge()).not.toBeInTheDocument()
+    })
+
+    it('a badge for someone signed in, whose chat opens on the welcome greeting', async () => {
+      window.sessionStorage.setItem('loomlane.token', 'token-123')
+      const fetch = fakeFetch({}) // guest chat off: it doesn't matter to an account
+      render(<App fetchImpl={fetch} />)
+      await settle()
+      wait(2000)
+
+      expect(badge()).toBeInTheDocument()
+      expect(callsTo(fetch, 'GET', '/auth/guest')).toHaveLength(0) // nothing to ask
+    })
+  })
+
+  it('on desktop it doesn\'t wait for any scrolling', () => {
+    start()
+    wait(2000)
+
+    expect(note()).toBeVisible()
+  })
+
+  describe('on a phone, where the hero fills the first screen', () => {
+    beforeEach(() => setMobile(true))
+
+    it('waits until the hero buttons have scrolled off the top, then shows with a 44px dismiss button', async () => {
+      start()
+      await settle()
+      wait(10_000)
+      expect(note()).toBeUndefined()
+      expect(badge()).not.toBeInTheDocument()
+
+      act(() => scrollPastHero())
+
+      expect(note()).toBeVisible()
+      expect(note().parentElement.className).not.toMatch(/(^|\s)hidden/)
+      expect(dismiss()).toHaveClass('h-control', 'w-control')
+      expect(launcherButton()).toHaveAccessibleName(withBadge)
+    })
+
+    it('shows at 2 seconds if the visitor is already past the hero buttons, not before', () => {
+      start()
+      act(() => scrollPastHero())
+      wait(1999)
+      expect(note()).toBeUndefined()
+
+      wait(1)
+      expect(note()).toBeVisible()
+    })
+
+    it('once shown, stays when scrolling back up (announced once, no flicker)', () => {
+      start()
+      wait(2000)
+      act(() => scrollPastHero())
+      act(() => scrollPastHero(false))
+
+      expect(note()).toBeVisible()
+    })
+
+    it('a visit that ends before scrolling hasn\'t had the note yet', () => {
+      const view = start()
+      wait(5000)
+      view.unmount()
+
+      start()
+      act(() => scrollPastHero())
+      wait(2000)
+      expect(note()).toBeVisible()
+    })
+  })
+
+  it('dismissing it hides the note, the badge and the ring, and focus moves to the chat button', () => {
+    start()
+    wait(2000)
+
+    fireEvent.click(dismiss())
+
+    expect(note()).toBeUndefined()
+    expect(within(region()).getByRole('status')).toBeEmptyDOMElement()
+    expect(badge()).not.toBeInTheDocument()
+    expect(ring()).not.toBeInTheDocument()
+    expect(launcherButton()).toHaveAccessibleName('Ask Loom & Lane')
+    expect(launcherButton()).toHaveFocus()
+  })
+
+  it('shows once per visit: not again after a reload', () => {
+    const view = start()
+    wait(2000)
+    expect(dismiss()).toBeInTheDocument()
+
+    view.unmount()
+    start() // the same tab, so the same sessionStorage
+    wait(10_000)
+
+    expect(dismiss()).not.toBeInTheDocument()
+    expect(badge()).not.toBeInTheDocument()
+  })
+
+  it('opening the chat hides it for good', () => {
+    start()
+    wait(2000)
+
+    fireEvent.click(launcherButton())
+    closeChat()
+    wait(10_000)
+
+    expect(note()).toBeUndefined()
+    expect(badge()).not.toBeInTheDocument()
+    expect(launcherButton()).toHaveAccessibleName('Ask Loom & Lane')
+  })
+
+  it('never appears if the chat was opened in the first 2 seconds', () => {
+    start()
+    fireEvent.click(launcherButton())
+    closeChat()
+
+    wait(10_000)
+
+    expect(note()).toBeUndefined()
+  })
+
+  it('only moves for visitors who welcome motion: the slide and the ring are motion-safe', () => {
+    start()
+    wait(2000)
+
+    const pill = note().parentElement
+    expect(pill).toHaveClass('motion-safe:animate-note-in')
+    expect(pill.className).not.toMatch(/(^|\s)animate-/)
+    expect(ring()).toHaveClass('motion-safe:animate-launcher-ring-round', 'sm:motion-safe:animate-launcher-ring', 'opacity-0')
+    expect(ring().className).not.toMatch(/(^|\s)(sm:)?animate-/)
+  })
+})
+
+describe('the hero tag', () => {
+  it('sits at the top of the photo, clear of the note at the bottom right', () => {
+    render(<App fetchImpl={fakeFetch({})} />)
+    const tag = screen.getByText('In the picture').parentElement
+
+    expect(tag).toHaveClass('top-6', 'right-6')
+    expect(tag.className).not.toMatch(/(^|\s)bottom-/)
   })
 })

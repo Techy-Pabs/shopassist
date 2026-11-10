@@ -1,6 +1,6 @@
 # ShopAssist
 
-ShopAssist is an AI customer support assistant for small online stores. Customers ask questions in a chat on the store's website (about delivery, returns, payments, sizes and products) and get an answer straight away, at any time of day. The assistant answers only from the store's own information, so it doesn't make up prices or policies. When it doesn't know, it says so and gives the store's contact details.
+ShopAssist is an AI customer support assistant for small online stores. Customers ask questions in a chat on the store's website (about delivery, returns, payments, sizes and products) and get an answer straight away, at any time of day, without having to create an account first. The assistant answers only from the store's own information, so it doesn't make up prices or policies. When it doesn't know, it says so and gives the store's contact details.
 
 The store owner gets a dashboard that shows how the assistant is doing and, above all, **what to fix**. Questions the assistant couldn't answer are flagged; the owner adds a document that covers them, and the assistant can answer next time.
 
@@ -8,7 +8,7 @@ The demo store is **Loom & Lane**, a fictional Lagos fashion brand.
 
 ## Live demo
 
-- **The store and its chat:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app). Click **Ask Loom & Lane**, create an account and ask a question, for example "How long does delivery to Abuja take?" or "Can I return earrings?".
+- **The store and its chat:** [shopassist-five.vercel.app](https://shopassist-five.vercel.app). Click **Ask Loom & Lane** and ask a question straight away, no account needed, for example "How long does delivery to Abuja take?" or "Can I return earrings?".
 - **The admin dashboard:** [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin). Only the store's admins can sign in, and demo admin accounts aren't handed out, so visitors see the sign in screen. The screenshots below show what's behind it.
 - **The API:** [shopassist-022b.onrender.com/docs](https://shopassist-022b.onrender.com/docs), the interactive API documentation, for developers.
 
@@ -18,16 +18,17 @@ The demo runs on free hosting that goes to sleep after 15 minutes without traffi
 
 **For customers**
 
-- A chat on the store's website that works on a phone and a computer
+- A chat on the store's website that works on a phone and a computer, with a note beside the chat button so visitors notice it
+- Visitors chat straight away as a **guest**, with no account (within limits, see [Guest chat](#guest-chat))
 - Answers about delivery, returns, payments, sizes and products, taken from the store's own information
-- Past conversations are kept, so a customer can pick up where they left off
+- Customers with a free account keep their past conversations, so they can pick up where they left off
 
 **For the store owner**
 
 - **Overview:** conversations, questions answered, what needs attention, and conversations per day
 - **Conversations:** every conversation, with the replies the assistant couldn't answer flagged, and the documents each answer came from
 - **Knowledge:** everything the assistant answers from. Upload PDF, Word, text or Markdown documents, preview them, and delete them, without a developer or a redeploy
-- **Customers:** every account, how many conversations they've had and when they were last active
+- **Customers:** every account, how many conversations they've had and when they were last active. Guests aren't accounts: their conversations are labelled "Guest" and counted on their own
 
 ## Screenshots
 
@@ -59,10 +60,10 @@ The dashboard is at `/admin` on the store's website. It belongs to ShopAssist ra
 
 ### The pages
 
-- **Overview** (`/admin`). Choose **Today**, **Last 7 days** or **Last 30 days**. Four key numbers: conversations (compared with the same length of time before), questions answered out of all customer questions, conversations that need your attention (split into "couldn't answer" and "unanswered"), and knowledge documents with when they were last updated. Each number opens the page behind it. Below them are the conversations per day (also described in text for screen readers), the conversations that need attention, and a prompt to upload a document that covers what the assistant couldn't answer.
-- **Conversations** (`/admin/conversations`). The list of conversations beside the one you're reading, and the customer's details beside that. The tabs show **All**, **Needs attention** or **Resolved**, and the search finds a word in customers' questions or their email address. Each reply shows **Couldn't answer** when the assistant didn't have the information, and **Answered from** with the documents it used; each document opens its preview. **Mark as resolved** clears a conversation from the attention list once you've dealt with it, and **Reopen** puts it back. A customer writing again in a resolved conversation reopens it. When a reply couldn't answer, **Add to knowledge** takes you to the Knowledge page. On a phone, the list and the conversation are separate screens.
+- **Overview** (`/admin`). Choose **Today**, **Last 7 days** or **Last 30 days**. Four key numbers: conversations (compared with the same length of time before, and how many of them guests started), questions answered out of all customer questions, conversations that need your attention (split into "couldn't answer" and "unanswered"), and knowledge documents with when they were last updated. Each number opens the page behind it. Below them are the conversations per day (also described in text for screen readers), the conversations that need attention, and a prompt to upload a document that covers what the assistant couldn't answer.
+- **Conversations** (`/admin/conversations`). The list of conversations beside the one you're reading, and the customer's details beside that. The tabs show **All**, **Needs attention** or **Resolved**, and the search finds a word in customers' questions or their email address. A guest's conversation shows **Guest** instead of an email, and the customer panel says they have no account. Each reply shows **Couldn't answer** when the assistant didn't have the information, and **Answered from** with the documents it used; each document opens its preview. **Mark as resolved** clears a conversation from the attention list once you've dealt with it, and **Reopen** puts it back. A customer writing again in a resolved conversation reopens it. When a reply couldn't answer, **Add to knowledge** takes you to the Knowledge page. On a phone, the list and the conversation are separate screens.
 - **Knowledge** (`/admin/knowledge`). Every document the assistant answers from: the **built in** ones (the store's own files in `knowledge/`, changed by a developer) and the **uploaded** ones. Filter and search them, then drag a file onto the page or use **Upload document**. The accepted file types and the size limit shown on the page come from the server's settings. **Preview** shows a document in the sections the assistant searches. Uploaded documents can be deleted, after a confirmation; built in ones can't. Each upload uses one request from the free AI quota.
-- **Customers** (`/admin/customers`). Every account, with its role, number of conversations, last activity and the date it joined, searchable by email, 20 to a page. A customer's email opens their conversations. Passwords are never shown, and nobody can be made an admin from here (see below).
+- **Customers** (`/admin/customers`). Every account (guests aren't listed: they have no account), with its role, number of conversations, last activity and the date it joined, searchable by email, 20 to a page. A customer's email opens their conversations. Passwords are never shown, and nobody can be made an admin from here (see below).
 
 Searches, tabs and pages are kept in the address, for example `/admin/conversations?filter=attention`, so the browser's back button and a bookmark work as you'd expect. The numbers are loaded when a page opens; they don't update by themselves while you look at it.
 
@@ -76,7 +77,7 @@ The sign in lasts for the browser tab only (it's kept in `sessionStorage`, separ
 
 ### Making someone an admin
 
-There is no admin sign up, and the dashboard can't make anyone an admin, so a stolen customer account can't give itself admin access. The person first creates a normal account (in the store's chat, or with **POST /auth/register**), and then a developer promotes it with a command. The command only changes existing accounts, never creates them, and it shows which database it is connected to and asks for confirmation before changing anything.
+There is no admin sign up, and the dashboard can't make anyone an admin, so a stolen customer account can't give itself admin access. Guests can never be admins: they have no email for the command to find, the command refuses them, and the database refuses a guest admin. The person first creates a normal account (in the store's chat, or with **POST /auth/register**), and then a developer promotes it with a command. The command only changes existing accounts, never creates them, and it shows which database it is connected to and asks for confirmation before changing anything.
 
 **Locally:**
 
@@ -150,6 +151,53 @@ When the assistant writes a reply, ShopAssist records which knowledge documents 
 
 It defaults to `UTC`, so set it to the store's own time zone: in `.env` locally, and under **Environment** on Render. A name that doesn't exist stops the API at startup with a clear error, instead of quietly showing the wrong days.
 
+## Guest chat
+
+Visitors don't need an account to try the assistant. They open the chat and ask, as a **guest**, within limits that protect the free AI quota. A free account removes the limits and keeps their conversations.
+
+### What a visitor sees
+
+- **A note beside the chat button.** On a computer, about 2 seconds after the page loads, "Ask our AI assistant" slides in beside the chat button, with a ring that pulses three times and stops. A "1" badge shows with it only when a greeting really is waiting in the chat: when the API says guest chat is on (`GET /auth/guest`), or the visitor is already signed in, and not when the chat would reopen an earlier conversation. With guest chat off, or the API asleep or unreachable, the note shows without the badge. On a phone the homepage's first screen is filled by the hero, so the note waits until its buttons have scrolled away; it never covers the heading or the buttons. The note shows once per visit, and not again once it's dismissed or the chat has been opened. Visitors who ask their device for less motion get no animation at all. Screen readers hear the note once, politely, and focus never moves to it.
+- **The chat starts straight away.** Opening the chat starts a guest chat, with no sign in screen: a greeting, the demo note and suggested questions. The footer shows "Guest chat · 10 questions left" and **Sign in to save your chats**. Guests have no history list.
+- **The limits.** After a guest's last question, or when all guests together reach the day's limit, the chat says so, the message box is disabled, and it offers to create a free account or sign in.
+- **Signing in.** Signing in or creating an account replaces the guest and starts a fresh chat; the guest's chat isn't moved to the account. A question the guest couldn't send waits in the message box.
+- **An expired guest.** A guest's sign in lasts 24 hours. After that the chat quietly starts a new guest chat and says the earlier one has ended.
+- **Guest chat off.** With `GUEST_CHAT_ENABLED=false`, or if starting a guest fails, the chat asks visitors to sign in, as it did before guest chat.
+
+### The limits, and how to change them
+
+| Limit | Default | Setting | When it's reached |
+|---|---|---|---|
+| Questions one guest can ask in all | 10 | `GUEST_MESSAGE_LIMIT` | `429` with the code `guest_limit_reached` |
+| Questions all guests together can ask per day | 15 | `GUEST_DAILY_LIMIT` | `429` `guest_daily_limit_reached`, with `Retry-After` (seconds to midnight in `STORE_TIMEZONE`). Signed in customers aren't affected. |
+| Questions one guest can ask per minute | 5 | `GUEST_MESSAGES_PER_MINUTE` | `429` `guest_too_fast`, with `Retry-After` |
+| Guests one visitor (IP address) can start per hour | 5 | `GUEST_CREATE_PER_HOUR` | `429` `guest_create_limit_reached`, with `Retry-After` |
+
+Why these numbers: the free AI models allow about 50 requests a day, and each message uses two (one to search the knowledge base, one for the reply). 15 guest questions a day is about 30 requests, which leaves room for signed in customers and for testing. To raise a limit, change its setting (on Render, under **Environment**) and let the API restart; no code changes are needed.
+
+How they're counted:
+
+- A guest's questions, and all guests' questions today, are counted from the messages saved in the database, so the counts survive a restart. A question is counted when it's saved, even if the reply then fails; **Try again** after a failed reply doesn't count as another question.
+- Every guest question takes a database lock before it's counted and saved, so two questions sent at the same moment can't both slip under a limit.
+- Only guest **creation** is counted in memory, per IP address, for an hour. That count resets when the API restarts, which is fine on Render's free plan: it runs one instance. Several instances would each keep their own count, so they'd need a shared store such as Redis.
+
+### Which IP address the guest limit uses
+
+On Render a request passes through Cloudflare and then Render's own proxy before it reaches the API, so the connection the API sees always comes from Render's proxy, on Render's private network. The visitor's real address arrives in headers, and they aren't all trustworthy:
+
+- **`X-Forwarded-For` is not used.** Cloudflare and Render's proxy add to the list a visitor sends rather than replacing it, so its first entry is whatever the visitor wrote. Uvicorn's own proxy support reads exactly that header (and with `--forwarded-allow-ips='*'` takes its first entry), so it is turned off with `--no-proxy-headers` in `scripts/start.sh`.
+- **`CF-Connecting-IP` is used.** Cloudflare sets it on every request to a Render web service and overwrites any value the visitor sent (see Render's article [Host PocketBase on Render](https://render.com/articles/host-pocketbase-on-render)).
+- It's trusted **only** when the connection comes from a network in `TRUSTED_PROXY_NETWORKS` (by default the private networks, where Render's proxy is). A connection from anywhere else is identified by its own address, and a `CF-Connecting-IP` header on it is ignored.
+
+So a visitor who forges `X-Forwarded-For` changes nothing (it's never read), and one who forges `CF-Connecting-IP` has it overwritten by Cloudflare before it reaches Render. The tests check both, and that a direct connection can't choose its address. If a request from Render's proxy ever arrives without `CF-Connecting-IP`, the API logs a warning once and falls back to the proxy's address; every visitor would then share one guest creation limit, so check the logs after deploying. The daily limit protects the quota either way. If ShopAssist moves off Render, this needs revisiting for the new host.
+
+### Guests and privacy
+
+- A guest is a row in `users` with no email or password (`is_guest` is true). Every ownership check works as for customers, and guests can never reach the admin endpoints or be made admins (tested on every admin endpoint).
+- The guest's token is the only key to their chat. It lasts `GUEST_TOKEN_HOURS` (24) and is kept in the browser tab's `sessionStorage`, so closing the tab ends the guest chat.
+- Guests created more than `GUEST_RETENTION_DAYS` ago (7) are deleted with their conversations, messages and message sources by `python -m app.cli.guests cleanup`. Render's free plan has no scheduled jobs, so `scripts/start.sh` runs it every time the API starts. The free service sleeps after 15 quiet minutes and starts again on the next request, so in practice that's often. Accounts are never touched.
+- No IP address is stored in the database. The guest creation limit holds addresses in memory for an hour at most.
+
 ## Roadmap
 
 ShopAssist was built in six milestones. **All six are done, and Project 1 is complete:** the store and its chat are live at [shopassist-five.vercel.app](https://shopassist-five.vercel.app), and the admin dashboard at [shopassist-five.vercel.app/admin](https://shopassist-five.vercel.app/admin).
@@ -161,6 +209,7 @@ ShopAssist was built in six milestones. **All six are done, and Project 1 is com
 - [x] **Milestone 4, knowledge uploads (admin only):** admins upload PDF, Word, text and Markdown documents into the knowledge base instead of editing files (see [Uploading documents](#uploading-documents))
 - [x] **Milestone 5, chat interface:** a chat website for customers (see [Chat frontend](#chat-frontend))
 - [x] **Milestone 6, admin dashboard:** a web dashboard for the store's staff, with "couldn't answer" detection, "answered from" sources and resolving conversations (see [Admin dashboard](#admin-dashboard))
+- [ ] **Milestone 7, guest chat:** visitors chat without an account, within limits that protect the AI quota, and a note beside the chat button points them to it (see [Guest chat](#guest-chat)). Built and tested; it goes live with the next deploy.
 
 ## For developers
 
@@ -183,6 +232,7 @@ To try the API directly, register with **POST /auth/register**, log in with **PO
 - If the knowledge base search fails, chat still works and directs the customer to support
 - A provider-agnostic AI layer, currently connected to OpenRouter
 - Two roles, customer and admin. Admins have their own endpoints for the dashboard: totals, conversations, customers and the knowledge base
+- Guest chat: visitors chat without an account, within per guest, daily, per minute and per IP limits that protect the AI quota, and old guests are deleted automatically
 - Admins can upload PDF, Word (.docx), text and Markdown documents into the knowledge base, see a preview of each, and delete them, with no code change or redeploy. Uploaded documents are searched exactly like the store's own files
 - Uploaded text is treated as untrusted: anything imitating the prompt's tags is removed, and the assistant is told to ignore instructions hidden in documents
 - Every reply records its outcome (answered or couldn't answer) and the documents it was answered from, and admins can resolve and reopen conversations
@@ -190,7 +240,7 @@ To try the API directly, register with **POST /auth/register**, log in with **PO
 - Clear error responses when the AI is slow, rate limited or unavailable
 - Database migrations with Alembic
 - Interactive API documentation (Swagger UI) at `/docs`
-- Automated tests (354 for the backend, 452 for the frontend) that use their own database or a fake API, a fake AI and fake embeddings, so they never touch real data or make real AI calls
+- Automated tests (432 for the backend, 518 for the frontend) that use their own database or a fake API, a fake AI and fake embeddings, so they never touch real data or make real AI calls
 - A quality check for the knowledge base: retrieval and answer checks against a list of test questions
 
 ## Tech stack
@@ -262,6 +312,8 @@ docs/screenshots/    the dashboard screenshots in this README
 **JWT verification.** Tokens are signed with HS256, and only HS256 is accepted when verifying, so a token can't switch to a weaker algorithm or to `none`. Every token must contain an expiry (`exp`) and a user id (`sub`). After the signature and expiry are checked, the user is loaded from the database, so a token for a deleted user stops working. Every failure (missing token, bad signature, expired token, deleted user) returns the same `401` with a `WWW-Authenticate: Bearer` header.
 
 **Roles checked on every request.** Each user is a `customer` or an `admin`, enforced by a database constraint. The role is not stored in the login token: `require_admin` reads it from the database on every request, so promoting or demoting someone takes effect on their next request, and a demoted admin's token stops working for admin endpoints at once. Registration always creates a customer and ignores any role sent with it. A missing or invalid token gets `401`; a valid customer token on an admin endpoint gets `403 Admin access required`.
+
+**Guests are customers without an account.** A guest is a user with no email or password; database CHECK constraints make sure an account always has both, and a guest has neither and is never an admin. Guest tokens are signed like login tokens and last `GUEST_TOKEN_HOURS`. Guests get `403` on every admin endpoint, and their limits are checked in the database before a question is saved. See [Guest chat](#guest-chat), including [which IP address the guest limit uses](#which-ip-address-the-guest-limit-uses).
 
 **Ownership checks.** One shared dependency, `get_user_conversation`, looks up a conversation by its id and the current user's id in a single query. A conversation that doesn't exist and one that belongs to someone else both return the same `404`, so users can't discover other users' conversation ids.
 
@@ -352,6 +404,14 @@ docker run --rm python:3.13-slim python -c "import secrets; print(secrets.token_
 | `UPLOAD_MAX_CHUNKS` | No | `64` | Most chunks in one upload. 64 fits in one embedding request. |
 | `STORE_TIMEZONE` | No | `UTC` | The store's time zone, as an IANA name such as `Africa/Lagos`. The admin dashboard's days start and end at midnight here ("today", and the conversations-per-day chart). An unknown name stops the app at startup with a clear error. |
 | `ALLOWED_ORIGINS` | No | `http://localhost:5173` | Browser origins allowed to call the API, comma separated (the frontend's address). `*` is rejected. |
+| `GUEST_CHAT_ENABLED` | No | `true` | Lets visitors chat without an account. `false` turns guest chat off: the chat asks visitors to sign in, and guests' requests get `403`. |
+| `GUEST_MESSAGE_LIMIT` | No | `10` | Questions one guest can ask in all |
+| `GUEST_DAILY_LIMIT` | No | `15` | Questions all guests together can ask per day (days start at midnight in `STORE_TIMEZONE`). Signed in customers aren't limited. |
+| `GUEST_MESSAGES_PER_MINUTE` | No | `5` | Questions one guest can ask per minute |
+| `GUEST_TOKEN_HOURS` | No | `24` | How long a guest's sign in lasts |
+| `GUEST_RETENTION_DAYS` | No | `7` | Guests and their conversations are deleted this many days after they started, when the API starts |
+| `GUEST_CREATE_PER_HOUR` | No | `5` | Guests one visitor (IP address) can start per hour, counted in memory |
+| `TRUSTED_PROXY_NETWORKS` | No | `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7` | Connections from these networks are Render's proxy, whose `CF-Connecting-IP` header is trusted as the visitor's address (see [Which IP address the guest limit uses](#which-ip-address-the-guest-limit-uses)). An invalid network stops the app at startup. |
 
 PostgreSQL only reads `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` the first time it creates its data. If you change them later, reset the database with `docker compose down -v` (this deletes all data) and start again.
 
@@ -374,10 +434,11 @@ docker compose up -d --build
 Each time the API container starts, it:
 
 1. applies any pending database migrations, and stops if one fails, instead of running against a half-updated database
-2. loads the knowledge base from `knowledge/` (see [Knowledge base](#knowledge-base)). Unchanged files are skipped, so this is quick. If it fails, a warning is logged and the API starts anyway.
-3. starts the server
+2. deletes guests older than `GUEST_RETENTION_DAYS` with their conversations (`python -m app.cli.guests cleanup`). If it fails, a warning is logged and the API starts anyway.
+3. loads the knowledge base from `knowledge/` (see [Knowledge base](#knowledge-base)). Unchanged files are skipped, so this is quick. If it fails, a warning is logged and the API starts anyway.
+4. starts the server
 
-The first start embeds every knowledge file, which uses one free request. You can also run both steps by hand:
+The first start embeds every knowledge file, which uses one free request. You can also run the migrations and the knowledge base steps by hand:
 
 ```bash
 docker compose exec api alembic upgrade head
@@ -434,8 +495,9 @@ The tests:
 - cover uploads: each file type, the content checks (a renamed file is rejected), every limit, scanned and password protected PDFs, duplicates, file names, embedding failures saving nothing, detail and delete, startup ingestion never touching uploads, fake prompt tags being removed, and uploaded chunks reaching chat
 - cover the admin role: `401` and `403` on every admin endpoint, admins getting `200`, registration ignoring a role, promoting and demoting taking effect without a new token, pagination limits, no password hashes in admin responses, and the promote and demote command
 - cover the dashboard's backend: "couldn't answer" detection (the phrase at the start, anywhere when nothing relevant was found, case, spaces and curly apostrophes), the sources saved with each reply and kept when a document is deleted, resolving and reopening (and a new customer message reopening), "needs attention", the overview's numbers and per day chart in the store's time zone, the conversation and customer lists with search and paging, and search text taken literally
+- cover guest chat: creating a guest and its token's lifetime, `/auth/me` for guests, expiry, `403` for guests on every admin endpoint (found from the app's routes, so a new one is covered too), the CHECK constraints, the promote command refusing guests, the 11th question refused, the daily limit (and signed in customers unaffected), day boundaries in the store's time zone, retry not counting, the per minute pace, two questions at the same moment, guest creation limited per IP (with forged `X-Forwarded-For` and `CF-Connecting-IP` headers), guest chat turned off, cleanup deleting old guests with everything they had and leaving accounts alone, and guests labelled and counted in the admin API
 
-There are 354 tests.
+There are 432 tests.
 
 Test tools (`requirements-dev.txt`) are only installed in the test image, not in the image the API runs from.
 
@@ -449,7 +511,8 @@ It talks to the API only over HTTP and never imports backend code. It has its ow
 
 A few behaviours worth knowing:
 
-- The login token is kept in `sessionStorage`, so it is forgotten when the tab closes. Any `401` returns to sign in with "Your session ended. Please sign in again."
+- Opening the chat without a token starts a guest chat (see [Guest chat](#guest-chat)); with guest chat off, it shows sign in.
+- The login token is kept in `sessionStorage`, so it is forgotten when the tab closes, and a guest's token is kept the same way, marked as a guest's. Any `401` on an account returns to sign in with "Your session ended. Please sign in again."; on a guest it quietly starts a new guest chat.
 - A conversation is created with the first message, so opening the widget never leaves empty conversations behind.
 - When the free Render service is asleep, the widget shows "Getting the assistant ready" while it wakes, and after 90 seconds an "unavailable" card with **Try again**.
 - Replies are shown as plain text, never as HTML.
@@ -504,7 +567,7 @@ npm test              # once
 npm run test:watch    # again on every change
 ```
 
-The 452 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. For the chat website, they cover:
+The 518 tests run in a simulated browser (jsdom) against a fake API, so they make no network calls and use no AI quota. For the chat website, they cover:
 
 - signing in, creating an account, wrong passwords, the server's validation messages, and a `401` on any call returning to sign in
 - sending: the bubble, the typing indicator and the reply; the unavailable card and **Try again**; `422` messages; a reply containing `<b>` or `<script>` shown as literal text
@@ -513,6 +576,8 @@ The 452 tests run in a simulated browser (jsdom) against a fake API, so they mak
 - the homepage: no dead links, store facts matching the knowledge base, photos (two widths, alt text, lazy loading, credits), the mobile menu, and every **Ask Loom & Lane** button opening the chat
 - accessibility: [axe](https://github.com/dequelabs/axe-core) checks of the homepage (and its open mobile menu) and every panel view at phone and desktop sizes, and animations only when the visitor hasn't asked for reduced motion
 - the design system: no colour, pixel size or one-off Tailwind value outside the tokens
+- the note beside the chat button: its 2 second timing, once per visit, dismissing it (focus moves to the chat button), the badge and the button's name (and no badge when guest chat is off, the API can't be reached, or a conversation will be resumed), waiting for the hero's buttons on phones, and no animation for reduced motion
+- guest chat: starting a guest, the guest welcome, questions left, both limit states, the pace message, signing in replacing a guest (with the unsent question kept), an expired guest token, and falling back to sign in when guest chat is off or fails
 
 For the admin dashboard, they cover:
 
@@ -526,12 +591,15 @@ For the admin dashboard, they cover:
 - customer text and documents with `<script>` and `<img onerror>` shown as literal text on every page
 - focus: each page's heading on arrival, dialogs that keep focus inside and return it, and focus kept on **Next** while a page loads
 - accessibility: axe on every dashboard page and dialog at phone and desktop sizes, and 44px touch targets on phones
+- guests: "Guest" instead of an email in the lists and the customer panel, and guest conversations counted on their own in the Overview
 
 ### Accessibility approach
 
 Accessibility is checked in three ways. The test suite runs axe on the homepage and every panel view, at phone and desktop sizes, so a regression fails the tests. The simulated browser can't measure colour contrast, so axe is also run in real Chrome, contrast included, on every screen at 1280x800 and 390x844 (no violations). And a keyboard only pass goes through the whole journey in real Chrome (open, sign in, a suggestion, send, history, back, sign out and **Escape**), checking at every stop that focus lands in the right place, shows the indigo focus ring and is on screen. Every control in the widget is a touch target of at least 44px (48px for the main controls on phones), except links inside a sentence. Animations run only when the visitor hasn't asked for reduced motion, and a test fails if one isn't guarded.
 
 The admin dashboard is checked the same way: axe in the tests and in real Chrome (contrast included) on every page and dialog at 1440x900 and 390x844, with no violations, and a keyboard only journey at both sizes: sign in, open a conversation from the attention list, mark it resolved, follow "Answered from" to the preview and close it, open and cancel an upload and a delete, search and page through customers, and sign out. Every stop has a visible focus ring, on screen. On phones every control is at least 44px.
+
+The note beside the chat button and guest chat were checked the same way in real Chrome at 1440x900 and 390x844: the note's timing, what it covers at 1280x800, 1440x900 and 1920x1080 (nothing important) and on five phone sizes (nothing, once it waits for the hero's buttons), and the whole guest journey (starting, two answered questions, the limit, sign in and back, an expired guest, the daily limit, and creating an account), with axe at every step and no violations. The chat button's name while the badge shows is "Ask Loom & Lane, 1 new message", from visually hidden text rather than an `aria-label`, so it always starts with the visible label.
 
 ### Design system and mockups
 
@@ -683,8 +751,9 @@ ShopAssist is set up to run on [Render](https://render.com) (the API, as a Docke
 The default build target in the `Dockerfile` is the production image. When it starts, it runs `scripts/start.sh`, which:
 
 1. applies database migrations with `alembic upgrade head`, and stops the container if they fail
-2. loads the knowledge base with `python -m app.cli.ingest`. If that fails, it logs a warning and continues, and the next start tries again.
-3. starts uvicorn on `0.0.0.0`, on the port in the `PORT` environment variable (Render sets this automatically; it defaults to `8000` locally)
+2. deletes old guests with `python -m app.cli.guests cleanup` (see [Guests and privacy](#guests-and-privacy)). If that fails, it logs a warning and continues.
+3. loads the knowledge base with `python -m app.cli.ingest`. If that fails, it logs a warning and continues, and the next start tries again.
+4. starts uvicorn on `0.0.0.0`, on the port in the `PORT` environment variable (Render sets this automatically; it defaults to `8000` locally), with `--no-proxy-headers` (see [Which IP address the guest limit uses](#which-ip-address-the-guest-limit-uses))
 
 Running migrations on startup means no separate migration step is needed, which matters because Render's free tier has no pre-deploy command or shell access.
 
@@ -734,6 +803,8 @@ The tables are created on the first start, when the container runs the migration
 | `STORE_TIMEZONE` | Recommended | `Africa/Lagos` for the demo store. Defaults to `UTC`. |
 | `ALLOWED_ORIGINS` | For the frontend | The frontend's exact address, `https://shopassist-five.vercel.app` for the demo. See [Deploying the frontend](#deploying-the-frontend). Never `*`. |
 | `UPLOAD_MAX_FILE_BYTES`, `UPLOAD_MAX_PDF_PAGES`, `UPLOAD_MAX_DOCX_UNCOMPRESSED_BYTES`, `UPLOAD_MAX_CHARS`, `UPLOAD_MAX_CHUNKS` | No | Upload limits; the defaults are 5 MB, 200, 20 MB, 60,000 and 64 |
+| `GUEST_CHAT_ENABLED`, `GUEST_MESSAGE_LIMIT`, `GUEST_DAILY_LIMIT`, `GUEST_MESSAGES_PER_MINUTE`, `GUEST_TOKEN_HOURS`, `GUEST_RETENTION_DAYS`, `GUEST_CREATE_PER_HOUR` | No | Guest chat and its limits; the defaults are on, 10, 15, 5, 24 hours, 7 days and 5. See [Guest chat](#guest-chat). |
+| `TRUSTED_PROXY_NETWORKS` | No | Leave the default on Render (see [Which IP address the guest limit uses](#which-ip-address-the-guest-limit-uses)) |
 
 Not needed in production:
 - `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` only configure the local database container.
@@ -776,7 +847,9 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 | GET | `/health` | No | Health check | `200` |
 | POST | `/auth/register` | No | Create an account. Body: `email`, `password` | `201` user, `400` email taken, `422` invalid input |
 | POST | `/auth/login` | No | Log in. Body: `email`, `password` | `200` access token, `401` wrong email or password |
-| GET | `/auth/me` | Yes | The logged-in user, including their role | `200`, `401` |
+| GET | `/auth/guest` | No | Whether guest chat is on: `{"enabled": true}`. Creates nothing; the chat button uses it to decide whether to show its "1" badge. | `200` |
+| POST | `/auth/guest` | No | Start a guest chat: creates a guest and returns its token, like login (it lasts `GUEST_TOKEN_HOURS`) | `201` access token, `403` guest chat is off, `429` too many guests from this address |
+| GET | `/auth/me` | Yes | The logged-in user, including their role and `is_guest`; for a guest, `questions_left` and `question_limit` | `200`, `401` |
 | POST | `/conversations` | Yes | Start a conversation. Optional body: `title` | `201`, `401` |
 | GET | `/conversations` | Yes | Your conversations, most recent activity first, with `updated_at` and `last_message_preview`. `limit` (default 50, at most 100). A conversation is named after its first message. | `200`, `401`, `422` |
 | GET | `/conversations/{conversation_id}/messages` | Yes | Messages in a conversation, oldest first | `200`, `401`, `404` |
@@ -786,7 +859,9 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 | POST | `/admin/conversations/{conversation_id}/reopen` | Admin | Mark it as needing attention again. A new customer message in a resolved conversation also reopens it. | `200`, `401`, `403`, `404`, `422` |
 | GET, POST, DELETE | `/admin/...` | Admin | The admin endpoints, see [Admins](#admins) | `200`, `201`, `204`, `401`, `403`, `404`, `409`, `413`, `415`, `422`, `502` |
 
-"Auth: Yes" means the request needs an `Authorization: Bearer <token>` header; "Admin" means that token must belong to an admin. User responses contain only `id`, `email`, `role` and `created_at`.
+"Auth: Yes" means the request needs an `Authorization: Bearer <token>` header; "Admin" means that token must belong to an admin. User responses contain only `id`, `email` (`null` for a guest), `role`, `is_guest` and `created_at`.
+
+A guest's `POST /conversations/{conversation_id}/messages` can also get `429` with a `code` (`guest_limit_reached`, `guest_daily_limit_reached` or `guest_too_fast`) and, where waiting helps, a `Retry-After` header; with guest chat off, guests get `403` with the code `guest_chat_disabled`. These responses are `{"detail": "...", "code": "..."}`.
 
 ## Current limitations
 
@@ -796,7 +871,9 @@ curl -s -o /dev/null -D - -X OPTIONS https://shopassist-022b.onrender.com/auth/l
 - Admins are made with a command line tool, not from the dashboard.
 - "Couldn't answer" is a heuristic, so a few replies may be labelled wrongly (see [its limits](#how-couldnt-answer-works-and-its-limits)), and "Answered from" shows the documents the assistant was given, not proof of which it used.
 - The dashboard doesn't update live: new conversations appear when a page is opened again.
-- There is no rate limiting on login or messages.
+- There is no rate limiting on login, or on signed in customers' messages; only guests are limited.
+- The guest creation limit is counted in memory, so it resets when the API restarts, and several instances would need a shared store (see [The limits, and how to change them](#the-limits-and-how-to-change-them)).
+- A guest's chat isn't moved to their account when they sign up; they start a fresh chat.
 - Knowledge base search is by meaning only (no keyword or hybrid search, no reranking), and the assistant can't look up orders.
 - Uploads can't be edited in place: delete and upload again. Original files aren't kept, only their text.
 - Scanned PDFs aren't supported (no text recognition), and text files must be UTF-8.

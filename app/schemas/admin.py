@@ -39,7 +39,9 @@ class AdminConversation(BaseModel):
     id: int
     title: str | None
     user_id: int
-    owner_email: str
+    # None for a guest, who has no email: the dashboard shows "Guest"
+    owner_email: str | None
+    owner_is_guest: bool
     message_count: int
     created_at: datetime
     # The latest message's time (or when it was started, if it has none)
@@ -89,7 +91,9 @@ class EarlierConversation(BaseModel):
 
 class CustomerSummary(BaseModel):
     id: int
-    email: str
+    # None for a guest
+    email: str | None
+    is_guest: bool
     joined: datetime
     conversation_count: int
     questions_asked: int
@@ -207,11 +211,14 @@ class AdminStats(BaseModel):
     # Conversations started in the range, and in the same length of time before it
     conversations: int
     previous_conversations: int
+    # Of this range's conversations, how many guests started (no account)
+    guest_conversations: int
     # Customer questions in the range, and replies that answered them
     questions: int
     answered: int
     needs_attention: NeedsAttention
     knowledge: KnowledgeSummary
+    # Customer accounts (guests aren't accounts)
     customers: int
     # One entry per day of the range, oldest first (days with none included)
     per_day: list[DayCount]

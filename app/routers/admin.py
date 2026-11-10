@@ -62,7 +62,7 @@ def count(db: Session, query) -> int:
 
 @router.get("/users", response_model=Page[AdminUser])
 def list_users(q_text: str | None = Search, page: Pagination = Depends(), db: Session = Depends(get_db)):
-    """Every account (customers and admins), newest first. q searches the email."""
+    """Every account (customers and admins, never guests), newest first. q searches the email."""
     query = q.user_summaries()
     if q_text:
         query = query.where(User.email.ilike(q.like_pattern(q_text), escape="\\"))
@@ -74,7 +74,7 @@ def list_users(q_text: str | None = Search, page: Pagination = Depends(), db: Se
 def _admin_conversation(row) -> AdminConversation:
     c = row.Conversation
     return AdminConversation(
-        id=c.id, title=c.title, user_id=c.user_id, owner_email=row.owner_email,
+        id=c.id, title=c.title, user_id=c.user_id, owner_email=row.owner_email, owner_is_guest=row.owner_is_guest,
         message_count=row.message_count, created_at=c.created_at, last_activity=row.last_activity,
         status=row.status, attention_reason=row.attention_reason, resolved_at=c.resolved_at,
     )
@@ -145,7 +145,7 @@ def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
             for m in messages
         ],
         customer=CustomerSummary(
-            id=customer.id, email=customer.email, joined=customer.created_at,
+            id=customer.id, email=customer.email, is_guest=customer.is_guest, joined=customer.created_at,
             **q.customer_summary(db, customer.id),
             earlier_conversations=[
                 EarlierConversation(

@@ -448,10 +448,27 @@ describe('signing out', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Sign out' }))
 
-    expect(screen.getByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
+    // Signed out, the chat tries to start a guest; guest chat is off here
+    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
     expect(window.sessionStorage.getItem(CONVERSATION_KEY)).toBeNull()
     expect(screen.queryByText(/Your session ended/)).not.toBeInTheDocument()
+  })
+
+  it('with guest chat on, signing out goes back to a guest chat, like any visitor', async () => {
+    window.sessionStorage.setItem(CONVERSATION_KEY, '42')
+    const { user } = setup({
+      'GET /conversations/42/messages': { status: 200, body: [] },
+      'POST /auth/guest': { status: 201, body: { access_token: 'guest-token', token_type: 'bearer' } },
+      'GET /auth/me': { status: 200, body: { id: 5, email: null, role: 'customer', is_guest: true, questions_left: 10, question_limit: 10 } },
+    })
+    await openChat(user)
+
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }))
+
+    expect(await screen.findByText('Hi! Ask me anything about delivery, returns or sizing. No account needed.')).toBeInTheDocument()
+    expect(window.sessionStorage.getItem(TOKEN_KEY)).toBe('guest-token')
+    expect(window.sessionStorage.getItem(CONVERSATION_KEY)).toBeNull()
   })
 })
 

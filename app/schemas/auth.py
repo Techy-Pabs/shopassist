@@ -23,6 +23,11 @@ class LoginRequest(BaseModel):
         return value.lower()
 
 
+class GuestChatStatus(BaseModel):
+    # Whether visitors can chat without an account (GUEST_CHAT_ENABLED)
+    enabled: bool
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

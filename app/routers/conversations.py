@@ -6,6 +6,7 @@ from app.dependencies import get_current_user, get_db, get_user_conversation
 from app.models import Conversation, Message, MessageSource, User
 from app.schemas.conversation import ConversationCreate, ConversationListItem, ConversationResponse
 from app.schemas.message import MessageCreate, MessageResponse
+from app.services import guests
 from app.services.ai import AIServiceError, generate_reply
 from app.services.outcomes import detect_outcome, sources_for
 from app.services.prompts import build_system_prompt
@@ -96,8 +97,13 @@ def list_messages(
 def send_message(
     body: MessageCreate,
     conversation: Conversation = Depends(get_user_conversation),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.is_guest:
+        # 403 or 429 before anything is saved; the lock it takes is held
+        # until the commit below, so the message counts before anyone else checks
+        guests.check_guest_can_send(db, current_user)
     db.add(Message(conversation_id=conversation.id, role="user", content=body.content))
     if conversation.resolved_at is not None:
         # The customer wrote again, so it needs attention again
@@ -118,12 +124,16 @@ def send_message(
 )
 def retry_reply(
     conversation: Conversation = Depends(get_user_conversation),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Try again to answer the latest customer message, after a reply failed.
 
-    Only the assistant's reply is saved, so the question isn't stored twice.
+    Only the assistant's reply is saved, so the question isn't stored twice,
+    and for a guest it doesn't count as another question.
     """
+    if current_user.is_guest:
+        guests.ensure_guest_chat_on()
     latest = db.scalar(
         select(Message)
         .where(Message.conversation_id == conversation.id)

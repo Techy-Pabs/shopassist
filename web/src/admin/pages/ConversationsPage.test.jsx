@@ -4,7 +4,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router'
 
 import { AppRoutes } from '../../Root.jsx'
 import {
-  ADMIN_ME, DETAIL, STATS, conversation, conversationsBody, detailBody, message, statsBody,
+  ADMIN_ME, DETAIL, STATS, conversation, conversationsBody, detailBody, guestConversation, message, statsBody,
 } from '../../test/adminFixtures.js'
 import { callsTo, deferred, fakeFetch } from '../../test/fakeApi.js'
 import { setMobile } from '../../test/setup.js'
@@ -560,5 +560,42 @@ describe('on a phone', () => {
     expect(await screen.findByRole('button', { name: 'Mark as resolved' })).toHaveClass('h-sa-touch')
     expect(screen.getByRole('link', { name: 'Add to knowledge' })).toHaveClass('h-sa-touch')
     expect(screen.getByRole('link', { name: 'All conversations' })).toHaveClass('h-sa-touch')
+  })
+})
+
+describe('guests', () => {
+  const GUEST = guestConversation({ attention_reason: 'unanswered' })
+  const GUEST_DETAIL = {
+    status: 200,
+    body: detailBody({
+      conversation: GUEST,
+      messages: [message({ id: 20, content: 'Is pickup free in Lekki?' })],
+      customer: {
+        id: 40, email: null, is_guest: true, joined: '2026-10-28T09:00:00Z',
+        conversation_count: 1, questions_asked: 1, couldnt_answer: 0, earlier_conversations: [],
+      },
+    }),
+  }
+  const routes = {
+    'GET /admin/conversations': { status: 200, body: conversationsBody([GUEST, conversation()]) },
+    'GET /admin/conversations/9': GUEST_DETAIL,
+  }
+
+  it('a guest\'s conversation is labelled "Guest" in the list, instead of an email', async () => {
+    open('/admin/conversations', routes)
+    const list = await listRegion()
+
+    expect(await within(list).findByRole('link', { name: /Is pickup free in Lekki/ })).toHaveTextContent(/^Guest/)
+    expect(within(list).getByRole('link', { name: /silk evening gowns/ })).toHaveTextContent(/^chioma\.o@example\.com/)
+  })
+
+  it('the customer panel says it is a guest, with no account', async () => {
+    open('/admin/conversations/9', routes)
+    const panel = await screen.findByRole('complementary', { name: 'Customer details' })
+
+    await waitFor(() => expect(panel).toHaveTextContent('No account · chatting since 28 Oct 2026'))
+    expect(panel).toHaveTextContent(/^CustomerGuest/)
+    expect(panel).not.toHaveTextContent('Account since')
+    expect(screen.getByRole('region', { name: 'Conversation with Guest' })).toBeInTheDocument()
   })
 })

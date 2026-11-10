@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat launcher with note, desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=Manrope:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F0E6}
+@keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.35);opacity:0}}
+@keyframes notein{0%{opacity:0;transform:translateX(8px)}100%{opacity:1;transform:translateX(0)}}
+.ring{animation:ring 1.6s ease-out 1s 3}
+.note{animation:notein .4s ease-out .6s both}
+@media (prefers-reduced-motion: reduce){.ring,.note{animation:none}}
+</style>
+</helmet>
+<div style="position: relative; width: 640px; height: 300px; overflow: hidden; background: #F6F0E6; color: #2B2420; font-family: 'Manrope', system-ui, sans-serif;">
+  <div aria-hidden="true" style="position: absolute; left: 32px; top: 32px; display: flex; flex-direction: column; gap: 10px; width: 300px;">
+    <span style="font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #A34A28;">The dry season edit</span>
+    <span style="font-family: 'Fraunces', Georgia, serif; font-size: 34px; line-height: 38px; font-weight: 500;">Cloth made for Lagos days</span>
+  </div>
+
+  <div style="position: absolute; right: 32px; bottom: 32px; display: flex; align-items: center; gap: 12px;">
+    <div class="note" role="status" style="display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 16px; background: #2B2420; color: #F6F0E6; border-radius: 999px; font-size: 15px; font-weight: 600;">
+      <span>Ask our AI assistant</span>
+      <button aria-label="Dismiss" style="width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; color: #E7DCCB; display: flex; align-items: center; justify-content: center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div style="position: relative;">
+      <span class="ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 999px; border: 3px solid #A34A28;"></span>
+      <button aria-label="Ask Loom and Lane, 1 new message" style="position: relative; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 8px; border: 0; border-radius: 999px; background: #A34A28; color: #F6F0E6; font-family: inherit; font-size: 15px; font-weight: 600;">
+        <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 999px; background: #F6F0E6; color: #A34A28; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-size: 13px; font-weight: 600;">L&amp;L</span>
+        Ask Loom &amp; Lane
+      </button>
+      <span aria-hidden="true" style="position: absolute; top: -6px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #2E3A59; color: #F6F0E6; border: 2px solid #F6F0E6; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;">1</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

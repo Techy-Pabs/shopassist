@@ -14,6 +14,13 @@ export const CloseIcon = () => (
   </Icon>
 )
 
+// The launcher note's smaller close icon, with a heavier stroke so it holds up at that size
+export const SmallCloseIcon = () => (
+  <svg className="h-icon-xs w-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)
+
 export const SendIcon = () => (
   <Icon>
     <path d="M5 12h14M13 6l6 6-6 6" />

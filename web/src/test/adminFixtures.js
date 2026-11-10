@@ -1,7 +1,7 @@
 // Replies from the admin API, as the backend sends them, for tests
 
 export const ADMIN_ME = {
-  status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', created_at: '2026-10-02T09:00:00Z' },
+  status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', is_guest: false, questions_left: null, created_at: '2026-10-02T09:00:00Z' },
 }
 
 // GET /admin/stats?range=7d: a week from Thursday 22 to Wednesday 28 October
@@ -12,6 +12,7 @@ export function statsBody(overrides = {}) {
     since: '2026-10-22T00:00:00+01:00',
     conversations: 48,
     previous_conversations: 39,
+    guest_conversations: 12,
     questions: 198,
     answered: 186,
     needs_attention: { total: 5, couldnt_answer: 3, unanswered: 2 },
@@ -30,6 +31,7 @@ export function conversation(overrides = {}) {
     title: 'Do you sell silk evening gowns?',
     user_id: 3,
     owner_email: 'chioma.o@example.com',
+    owner_is_guest: false,
     message_count: 2,
     created_at: '2026-10-28T13:20:00Z',
     last_activity: '2026-10-28T13:22:00Z',
@@ -44,6 +46,10 @@ export function conversation(overrides = {}) {
 export function conversationsBody(items) {
   return { items, total: items.length, limit: 5, offset: 0, counts: { all: 48, attention: items.length, resolved: 0 } }
 }
+
+// A guest's conversation: guests have no email
+export const guestConversation = (overrides = {}) =>
+  conversation({ id: 9, title: 'Is pickup free in Lekki?', user_id: 40, owner_email: null, owner_is_guest: true, ...overrides })
 
 export const ATTENTION = {
   status: 200,
@@ -78,7 +84,7 @@ export function detailBody(overrides = {}) {
       }),
     ],
     customer: {
-      id: 3, email: 'chioma.o@example.com', joined: '2026-10-12T09:00:00Z',
+      id: 3, email: 'chioma.o@example.com', is_guest: false, joined: '2026-10-12T09:00:00Z',
       conversation_count: 3, questions_asked: 7, couldnt_answer: 1,
       earlier_conversations: [
         { id: 5, title: 'Delivery to Lekki', last_activity: '2026-10-21T10:00:00Z', status: 'open' },

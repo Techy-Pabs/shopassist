@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 
 import { store } from '../../config/store.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
-import { count, dayAndMonth, daysAgo, shortTime, weekday } from '../format.js'
+import { count, dayAndMonth, daysAgo, ownerName, shortTime, weekday } from '../format.js'
 import { ChevronIcon, DocumentIcon, WarningIcon } from '../icons.jsx'
 import { useLoad } from '../useLoad.js'
 import { PageHeader } from './Pages.jsx'
@@ -91,6 +91,7 @@ function KeyNumbers({ stats, range }) {
         <span className="font-medium text-sa-ink-muted">Conversations</span>
         <span className={figure}>{stats.conversations}</span>
         <span className={note}>{comparison(stats.conversations, stats.previous_conversations, range)}</span>
+        <span className={note}>Guest conversations: <span className="font-sa-mono">{stats.guest_conversations}</span></span>
       </Link>
       <Link to="/admin/conversations" className={plain}>
         <span className="font-medium text-sa-ink-muted">Questions answered</span>
@@ -123,6 +124,8 @@ function PhoneNumbers({ stats }) {
     ['/admin/conversations', 'Answered', stats.answered],
     ['/admin/knowledge', 'Documents', stats.knowledge.documents],
     ['/admin/customers', 'Customers', stats.customers],
+    // Guests aren't customers: their conversations are counted on their own
+    ['/admin/conversations', 'Guest conversations', stats.guest_conversations],
   ]
   return (
     <>
@@ -135,8 +138,8 @@ function PhoneNumbers({ stats }) {
         <span className="text-sa-attention"><ChevronIcon /></span>
       </Link>
       <section aria-label="Key numbers" className="grid grid-cols-2 gap-sa-3">
-        {numbers.map(([to, label, value]) => (
-          <Link key={label} to={to} className={small}>
+        {numbers.map(([to, label, value], i) => (
+          <Link key={label} to={to} className={`${small} ${i === numbers.length - 1 ? 'col-span-2' : ''}`}>
             <span className="text-sa-small text-sa-ink-muted">{label}</span>
             <span className="font-sa-mono text-sa-figure-sm">{value}</span>
           </Link>
@@ -248,7 +251,7 @@ function AttentionList({ list, timeZone, phone }) {
                 </span>
                 <span className="flex flex-wrap items-center gap-sa-2 text-sa-small text-sa-ink-muted">
                   <Reason reason={c.attention_reason} />
-                  {!phone && <span className="min-w-0 break-all">{c.owner_email}</span>}
+                  {!phone && <span className="min-w-0 break-all">{ownerName(c)}</span>}
                 </span>
               </Link>
             </li>

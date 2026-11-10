@@ -153,6 +153,16 @@ def fake_ai(monkeypatch):
     return fake
 
 
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Rate limit counts live in memory: start each test with none."""
+    from app.routers import auth
+
+    auth.guest_creation_limit.reset()
+    yield
+    auth.guest_creation_limit.reset()
+
+
 @pytest.fixture
 def register(client):
     """register(email, password) -> the response from POST /auth/register."""

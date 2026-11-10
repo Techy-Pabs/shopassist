@@ -1,7 +1,7 @@
 // The views the interface can show, and how to reach each one in a test:
 // the homepage (and its open mobile menu) and every chat panel view. Used by
 // the accessibility checks and the generated CSS check.
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { MemoryRouter } from 'react-router'
@@ -15,7 +15,7 @@ import {
 } from './adminFixtures.js'
 import { deferred, fakeFetch } from './fakeApi.js'
 import { launcherButton } from './launcher.js'
-import { setMobile } from './setup.js'
+import { scrollPastHero, setMobile, showTheNote } from './setup.js'
 
 const now = new Date().toISOString()
 const CONVERSATIONS = [
@@ -27,8 +27,11 @@ const MESSAGES = [
   { id: 2, role: 'assistant', content: 'Delivery to Abuja takes 3 to 5 business days.', created_at: now },
 ]
 
+// Opens the chat and waits for it to settle (without a token it first tries
+// to start a guest)
 async function open(user) {
   await user.click(launcherButton())
+  await waitFor(() => expect(screen.queryByText('Starting the chat…')).not.toBeInTheDocument())
 }
 
 function signedIn(routes = {}) {
@@ -37,6 +40,19 @@ function signedIn(routes = {}) {
     'GET /auth/me': { status: 200, body: { id: 1, email: 'ada@example.com' } },
     'GET /conversations': { status: 200, body: CONVERSATIONS },
     'GET /conversations/1/messages': { status: 200, body: MESSAGES },
+    ...routes,
+  }
+}
+
+// A guest's chat: started on opening, with this many questions left
+const guestMe = (left = 10) => ({
+  status: 200, body: { id: 5, email: null, role: 'customer', is_guest: true, questions_left: left, question_limit: 10, created_at: now },
+})
+function guestRoutes(routes = {}) {
+  return {
+    'POST /auth/guest': { status: 201, body: { access_token: 'guest-token', token_type: 'bearer' } },
+    'GET /auth/me': guestMe(),
+    'POST /conversations': { status: 201, body: { id: 1, title: null } },
     ...routes,
   }
 }
@@ -283,6 +299,21 @@ export const VIEWS = {
     reach: async () => {},
     ready: () => screen.findByRole('complementary', { name: 'Chat' }),
   },
+  'homepage with the note': {
+    routes: () => {
+      showTheNote()
+      // Guest chat on, so the badge shows too
+      return { 'GET /auth/guest': { status: 200, body: { enabled: true } } }
+    },
+    // The note, its badge and its ring, 2 seconds after the page loads (on
+    // phones, once the hero's buttons have scrolled away)
+    reach: async () => {
+      act(() => scrollPastHero())
+      act(() => vi.advanceTimersByTime(2_000))
+    },
+    ready: () => screen.findByRole('button', { name: 'Dismiss the note' }),
+    fakeTimers: true,
+  },
   'open mobile menu': {
     routes: () => ({}),
     reach: async (user) => {
@@ -303,6 +334,35 @@ export const VIEWS = {
       await user.click(screen.getByRole('tab', { name: 'Create account' }))
     },
     ready: () => screen.findByRole('button', { name: 'Create account and start chatting' }),
+  },
+  'guest welcome': {
+    routes: () => guestRoutes(),
+    reach: open,
+    ready: () => screen.findByText(/Guest chat · 10 questions left/),
+  },
+  'guest out of questions': {
+    routes: () => guestRoutes({ 'GET /auth/me': guestMe(0) }),
+    reach: open,
+    ready: () => screen.findByText("You've used your 10 guest questions"),
+  },
+  'guest daily limit': {
+    routes: () => guestRoutes({
+      'POST /conversations/1/messages': { status: 429, body: { detail: 'Guest chat is busy today.', code: 'guest_daily_limit_reached' } },
+    }),
+    reach: async (user) => {
+      await open(user)
+      await user.type(await screen.findByRole('textbox', { name: 'Your question' }), 'Is pickup free?')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+    },
+    ready: () => screen.findByText('Guest chat is busy today'),
+  },
+  'guest sign in': {
+    routes: () => guestRoutes(),
+    reach: async (user) => {
+      await open(user)
+      await user.click(await screen.findByRole('button', { name: 'Sign in to save your chats' }))
+    },
+    ready: () => screen.findByRole('button', { name: 'Back to the chat' }),
   },
   welcome: {
     routes: () => signedIn(),
