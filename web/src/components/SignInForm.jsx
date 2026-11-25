@@ -49,9 +49,10 @@ function Field({ id, label, type, value, onChange, error, hint, autoComplete, in
   )
 }
 
-// initialMode: "sign-in" or "create". onBack: a guest who came here from
-// their chat can go back to it (signing in replaces the guest).
-export default function SignInForm({ emailRef, initialMode = 'sign-in', onBack }) {
+// initialMode: "sign-in" or "create". onBack: go back to where the form was
+// opened from (a guest's chat, or why guest chat isn't available), with
+// backLabel on the button.
+export default function SignInForm({ emailRef, initialMode = 'sign-in', onBack, backLabel = 'Back to the chat' }) {
   const { api, signIn, notice } = useSession()
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
@@ -128,7 +129,7 @@ export default function SignInForm({ emailRef, initialMode = 'sign-in', onBack }
           onClick={onBack}
           className="-my-3 flex min-h-control cursor-pointer items-center self-start border-0 bg-transparent p-0 font-sans text-body-small font-semibold text-clay underline hover:text-ink"
         >
-          Back to the chat
+          {backLabel}
         </button>
       )}
       <div className="flex flex-col gap-2">

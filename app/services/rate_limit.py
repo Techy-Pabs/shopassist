@@ -41,6 +41,22 @@ class SlidingWindowLimit:
             hits.append(now)
             return None
 
+    def recent(self, key: str) -> list[float]:
+        """Seconds until each hit in the window leaves it, oldest first.
+        Counts without adding a hit (see add)."""
+        now = self._clock()
+        with self._lock:
+            hits = self._hits.get(key, ())
+            return [h + self._window - now for h in hits if h > now - self._window]
+
+    def add(self, key: str) -> None:
+        """Count a hit for key without checking the limit (the caller has)."""
+        now = self._clock()
+        with self._lock:
+            if len(self._hits) > _SWEEP_ABOVE:
+                self._sweep(now)
+            self._hits.setdefault(key, deque()).append(now)
+
     def _sweep(self, now: float) -> None:
         for key in [k for k, hits in self._hits.items() if not hits or hits[-1] <= now - self._window]:
             del self._hits[key]

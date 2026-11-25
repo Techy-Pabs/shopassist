@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
+import { waitInWords } from './GuestRefused.jsx'
 import { authHeader, callsTo, deferred, fakeFetch } from '../test/fakeApi.js'
 import { launcherButton } from '../test/launcher.js'
 
@@ -130,7 +131,7 @@ describe('questions left', () => {
     left = 9
     await ask(user)
 
-    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument()
     await waitFor(() => expect(panel()).toHaveTextContent('9 questions left'))
   })
 })
@@ -324,41 +325,107 @@ describe('an expired guest token', () => {
   })
 })
 
-describe('when guest chat is off or fails', () => {
-  it('guest chat off: the sign in screen, as before guests', async () => {
-    const { fetch, user } = setup({}) // the fake API's default: guest chat is off
+describe('when a guest chat is refused or fails', () => {
+  const reason = () => screen.findByRole('heading', { name: "Guest chat isn't available" })
+  const TOO_MANY = refused(
+    'guest_create_limit_reached', 'Too many guest chats were started from your connection. Please try again later, or sign in.',
+    { 'Retry-After': '3540' },
+  )
+
+  it('too many guest chats: the reason in plain language, then Sign in and Create an account', async () => {
+    const { fetch, user } = setup(guestRoutes({ 'POST /auth/guest': TOO_MANY }))
 
     await user.click(launcherButton())
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Email')).toHaveFocus()
-    expect(screen.queryByRole('button', { name: 'Back to the chat' })).not.toBeInTheDocument()
-    expect(callsTo(fetch, 'POST', '/auth/guest')).toHaveLength(1)
+    expect(await reason()).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Too many guest chats were started from your connection. Try again in about an hour.',
+    )
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create an account' })).toBeInTheDocument()
+    // Not quietly the sign in form
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { name: "Guest chat isn't available" })).toHaveFocus())
+    expect(callsTo(fetch, 'POST', '/auth/guest')).toHaveLength(1) // not tried again
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
   })
 
+  it('the buttons open sign in or create account, and Back returns to the reason', async () => {
+    const { user } = setup(guestRoutes({ 'POST /auth/guest': TOO_MANY }))
+    await user.click(launcherButton())
+    await reason()
+
+    await user.click(screen.getByRole('button', { name: 'Create an account' }))
+    expect(screen.getByRole('tab', { name: 'Create account' })).toHaveAttribute('aria-selected', 'true')
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus())
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    expect(await reason()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(screen.getByRole('tab', { name: 'Sign in' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('signing in from there starts the chat', async () => {
+    const { user } = setup(guestRoutes({
+      'POST /auth/guest': TOO_MANY,
+      'POST /auth/login': { status: 200, body: { access_token: 'account-token', token_type: 'bearer' } },
+      'GET /auth/me': ACCOUNT_ME,
+    }))
+    await user.click(launcherButton())
+    await user.click(await screen.findByRole('button', { name: 'Sign in' }))
+
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com')
+    await user.type(screen.getByLabelText('Password'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Sign in and start chatting' }))
+
+    expect(await screen.findByRole('button', { name: "Where's my order?" })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: "Guest chat isn't available" })).not.toBeInTheDocument()
+  })
+
   it.each([
-    ['the request fails', new TypeError('Failed to fetch')],
-    ['too many guests from this address', refused('guest_create_limit_reached', 'Too many guest chats were started from your connection.', { 'Retry-After': '3600' })],
-    ['a server error', { status: 500, body: { detail: 'Something went wrong.' } }],
-  ])('%s: the sign in screen', async (_, reply) => {
+    ['guest chat is off', { status: 403, body: { detail: 'Guest chat is turned off.', code: 'guest_chat_disabled' } },
+      'Chatting without an account is turned off right now.'],
+    ['another refusal', { status: 500, body: { detail: 'Something went wrong. Please try again.' } },
+      'Something went wrong. Please try again.'],
+  ])('%s: its reason', async (_, reply, text) => {
     const { user } = setup(guestRoutes({ 'POST /auth/guest': reply }))
 
     await user.click(launcherButton())
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
+    expect(await reason()).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(text)
   })
 
-  it('guest chat turned off mid chat: sign in, with the question kept', async () => {
+  it("the API can't be reached: sign in, as before guests (there's no reason to show)", async () => {
+    const { fetch, user } = setup(guestRoutes({ 'POST /auth/guest': new TypeError('Failed to fetch') }))
+
+    await user.click(launcherButton())
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus())
+    expect(screen.queryByRole('button', { name: 'Back to the chat' })).not.toBeInTheDocument()
+    expect(callsTo(fetch, 'POST', '/auth/guest')).toHaveLength(1)
+  })
+
+  it('guest chat turned off mid chat: the reason, and the question kept for after signing in', async () => {
     const { user } = setup(guestRoutes({
       'POST /conversations/1/messages': { status: 403, body: { detail: 'Guest chat is turned off.', code: 'guest_chat_disabled' } },
+      'POST /auth/login': { status: 200, body: { access_token: 'account-token', token_type: 'bearer' } },
     }))
     await openAsGuest(user)
 
     await ask(user, 'Hello?')
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to chat' })).toBeInTheDocument()
+    expect(await reason()).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Chatting without an account is turned off right now.')
     expect(window.sessionStorage.getItem(TOKEN_KEY)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com')
+    await user.type(screen.getByLabelText('Password'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Sign in and start chatting' }))
+    expect(await screen.findByRole('textbox', { name: 'Your question' })).toHaveValue('Hello?')
   })
 
   it("an account's session ending still asks it to sign in again (no guest)", async () => {
@@ -384,4 +451,17 @@ it("a guest's messages and the replies are plain text", async () => {
   expect(screen.getByText('<script>window.hacked = true</script>')).toBeInTheDocument()
   expect(panel().querySelector('script, img')).toBeNull()
   expect(window.hacked).toBeUndefined()
+})
+
+describe('the wait, in words', () => {
+  it.each([
+    [30, 'in a minute or so'],
+    [600, 'in about 10 minutes'],
+    [3540, 'in about an hour'],
+    [3600, 'in about an hour'],
+    [7200, 'in about 2 hours'],
+    [null, 'later'],
+  ])('%s seconds: "%s"', (seconds, words) => {
+    expect(waitInWords(seconds)).toBe(words)
+  })
 })

@@ -48,6 +48,9 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
   // Guest chat is off, or starting a guest failed: the chat asks to sign in
   // instead, as it did before guests (until the page reloads)
   const [guestUnavailable, setGuestUnavailable] = useState(false)
+  // The API's reason for refusing a guest chat ({ code, message, retryAfter }),
+  // shown in place of the chat. null when it didn't answer at all.
+  const [guestRefusal, setGuestRefusal] = useState(null)
   // A message that couldn't be sent because the session ended: it goes back
   // into the input after signing in again
   const [draft, setDraft] = useState('')
@@ -122,11 +125,13 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
   }, [])
 
   // POST /auth/guest. true when the guest's chat can start; false means
-  // fall back to signing in (guest chat off, or the request failed).
+  // not as a guest: the API refused (its reason is kept, to show), or it
+  // couldn't be reached (sign in, as before guests)
   const startGuest = useCallback(async () => {
     const result = await api.createGuest()
     if (!result.ok) {
       setGuestUnavailable(true)
+      if (result.status) setGuestRefusal({ code: result.code, message: result.message, retryAfter: result.retryAfter })
       return false
     }
     storeToken(result.data.access_token, true)
@@ -148,6 +153,7 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
   const guestChatOff = useCallback(() => {
     saveConversationId(null)
     setGuestUnavailable(true)
+    setGuestRefusal({ code: 'guest_chat_disabled', message: null, retryAfter: null })
     signOut(null)
   }, [signOut])
 
@@ -155,7 +161,7 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
     () => ({
       api, token, isSignedIn: Boolean(token), isGuest, hasAccount: Boolean(token) && !isGuest,
       notice, signIn, draft, setDraft,
-      guest: { ...usage, notice: guestNotice, unavailable: guestUnavailable },
+      guest: { ...usage, notice: guestNotice, unavailable: guestUnavailable, refusal: guestRefusal },
       startGuest, refreshUsage, reachGuestLimit, guestChatOff,
       // Signing out on purpose also forgets this tab's conversation and any
       // unsent text, so the next person to sign in starts fresh
@@ -165,7 +171,7 @@ export function SessionProvider({ children, apiUrl = API_URL, fetchImpl }) {
         signOut(null)
       },
     }),
-    [api, token, isGuest, notice, signIn, signOut, draft, usage, guestNotice, guestUnavailable, startGuest, refreshUsage,
+    [api, token, isGuest, notice, signIn, signOut, draft, usage, guestNotice, guestUnavailable, guestRefusal, startGuest, refreshUsage,
       reachGuestLimit, guestChatOff],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

@@ -7,6 +7,7 @@ import ChatView from './ChatView.jsx'
 import { loadConversationId, saveConversationId } from '../lib/conversationStore.js'
 import HistoryList from './HistoryList.jsx'
 import PanelHeader, { HistoryHeader } from './PanelHeader.jsx'
+import GuestRefused from './GuestRefused.jsx'
 import SignInForm from './SignInForm.jsx'
 import WakingScreen from './WakingScreen.jsx'
 
@@ -81,10 +82,11 @@ export default function ChatPanel({ onClose }) {
     if (!isSignedIn) setView('chat')
   }, [isSignedIn])
 
-  // Signing in in place of a guest leaves the guest's sign in form
+  // Signing in (in place of a guest, or after guest chat was refused) leaves
+  // the sign in form
   useEffect(() => {
     if (!isGuest) setSignInMode(null)
-  }, [isGuest])
+  }, [isGuest, token])
 
   function showHistory() {
     setView('history')
@@ -113,7 +115,7 @@ export default function ChatPanel({ onClose }) {
     const target = (isGuest && signInMode ? signInRef : focusRef).current
     target?.focus()
     if (!target || document.activeElement !== target) panelRef.current?.focus()
-  }, [isSignedIn, isGuest, signInMode, guest.unavailable])
+  }, [isSignedIn, isGuest, signInMode, guest.unavailable, guest.refusal])
 
   // A stored token may have expired since it was saved: check it once when
   // the panel opens. A 401 signs out with the session message (or, for a
@@ -174,9 +176,19 @@ export default function ChatPanel({ onClose }) {
           historyRef={historyButtonRef}
         />
       )}
-      {/* Signed out: a guest starts straight away, unless guest chat is off
-          or failed, or an account's session has just ended (sign in again) */}
-      {!isSignedIn && (notice || guest.unavailable ? <SignInForm emailRef={focusRef} /> : <GuestStart />)}
+      {/* Signed out: a guest starts straight away. If the API refused, its
+          reason and a way to sign in; if it couldn't be reached, or an
+          account's session has just ended, sign in (as before guests) */}
+      {!isSignedIn && (
+        notice ? <SignInForm emailRef={focusRef} />
+        : guest.refusal ? (
+          signInMode
+            ? <SignInForm key={signInMode} emailRef={focusRef} initialMode={signInMode} onBack={() => setSignInMode(null)} backLabel="Back" />
+            : <GuestRefused refusal={guest.refusal} onAccount={setSignInMode} headingRef={focusRef} />
+        )
+        : guest.unavailable ? <SignInForm emailRef={focusRef} />
+        : <GuestStart />
+      )}
       {isGuest && signInMode && (
         <SignInForm key={signInMode} emailRef={signInRef} initialMode={signInMode} onBack={() => setSignInMode(null)} />
       )}

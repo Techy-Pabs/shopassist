@@ -47,7 +47,8 @@ describe('opening and closing the panel', () => {
 
     await openPanel(user)
 
-    expect(screen.getByLabelText('Email')).toHaveFocus()
+    // Focus moves once the attempt to start a guest has failed
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus())
   })
 
   it('Escape closes the panel and focus returns to the launcher', async () => {

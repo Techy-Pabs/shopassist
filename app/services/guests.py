@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import Conversation, Message, User
 from app.services.admin_queries import range_bounds
+from app.services.rate_limit import SlidingWindowLimit
 
 # Taken (and held until the transaction ends) by every guest message before
 # its limits are checked, so two messages sent at the same moment can't both
@@ -20,6 +21,12 @@ from app.services.admin_queries import range_bounds
 GUEST_SEND_LOCK = 7_250_001
 
 PACE_WINDOW = timedelta(minutes=1)
+
+# Retries a guest made in the last minute, by user id. A retry saves no
+# message, so unlike sends it can't be counted from the database; it still
+# costs an AI request, so it counts towards GUEST_MESSAGES_PER_MINUTE. In
+# memory, like the guest creation limit (see app/services/rate_limit.py).
+guest_retries = SlidingWindowLimit(lambda: settings.guest_messages_per_minute, window_seconds=PACE_WINDOW.total_seconds())
 
 
 class GuestChatError(Exception):
@@ -65,16 +72,27 @@ def guest_questions_since(db: Session, since: datetime) -> int:
     )
 
 
-def check_guest_can_send(db: Session, user: User) -> None:
-    """Raise GuestChatError if this guest may not send another message now.
+def check_guest_can_send(db: Session, user: User, retrying: Message | None = None) -> None:
+    """Raise GuestChatError if this guest may not send another message now,
+    or, with retrying, ask again for the reply to that saved question.
 
-    Call it in the transaction that then saves the message: the lock it
-    takes is released when that transaction commits.
+    The same three limits apply to both, and a retry is never counted as a
+    new question:
+    - per guest: the guest's own allowance, where the retried question
+      already has its place, so it's left out (a guest whose 10th question
+      failed can still retry it)
+    - daily: the day's shared AI budget for all guests. Once it's used up, no
+      guest AI requests today, retries included (Retry-After: midnight)
+    - per minute: a retry is an AI request, so it counts with the guest's sends
+
+    Call it in the transaction that then saves the message (or, for a retry,
+    commit straight after): the lock it takes is released at the commit.
     """
     ensure_guest_chat_on()
     db.execute(select(func.pg_advisory_xact_lock(GUEST_SEND_LOCK)))
+    already_counted = 1 if retrying is not None else 0
 
-    if questions_used(db, user) >= settings.guest_message_limit:
+    if questions_used(db, user) - already_counted >= settings.guest_message_limit:
         raise GuestChatError(
             429, "guest_limit_reached",
             f"You've used your {settings.guest_message_limit} guest questions. "
@@ -90,17 +108,21 @@ def check_guest_can_send(db: Session, user: User) -> None:
             retry_after=math.ceil((tomorrow - current).total_seconds()),
         )
 
-    # The database's clock, like the messages' created_at
+    # The pace: questions sent in the last minute (the database's clock, like
+    # their created_at) and retries (in memory), each as the seconds until it
+    # leaves the minute
     db_now = db.scalar(select(func.now()))
-    recent = db.scalars(
+    sent = db.scalars(
         select(Message.created_at)
         .join(Conversation, Conversation.id == Message.conversation_id)
         .where(Conversation.user_id == user.id, Message.role == "user", Message.created_at > db_now - PACE_WINDOW)
-        .order_by(Message.created_at)
     ).all()
-    if len(recent) >= settings.guest_messages_per_minute:
+    leaving = sorted([(t + PACE_WINDOW - db_now).total_seconds() for t in sent] + guest_retries.recent(str(user.id)))
+    if len(leaving) >= settings.guest_messages_per_minute:
         raise GuestChatError(
             429, "guest_too_fast",
             "You're sending messages very quickly. Please wait a moment and try again.",
-            retry_after=max(1, math.ceil((recent[0] + PACE_WINDOW - db_now).total_seconds())),
+            retry_after=max(1, math.ceil(leaving[0])),
         )
+    if retrying is not None:
+        guest_retries.add(str(user.id))

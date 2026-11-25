@@ -19,8 +19,8 @@ import { scrollPastHero, setMobile, showTheNote } from './setup.js'
 
 const now = new Date().toISOString()
 const CONVERSATIONS = [
-  { id: 1, title: 'Delivery to Abuja', last_message_preview: 'Delivery to Abuja takes 3 to 5 business days.', updated_at: now, created_at: now },
-  { id: 2, title: null, last_message_preview: null, updated_at: '2026-01-05T10:00:00Z', created_at: '2026-01-05T10:00:00Z' },
+  { id: 1, title: 'Delivery to Abuja', last_reply_preview: 'Delivery to Abuja takes 3 to 5 business days.', last_message_failed: false, updated_at: now, created_at: now },
+  { id: 2, title: null, last_reply_preview: null, last_message_failed: false, updated_at: '2026-01-05T10:00:00Z', created_at: '2026-01-05T10:00:00Z' },
 ]
 const MESSAGES = [
   { id: 1, role: 'user', content: 'How long does delivery take?', created_at: now },
@@ -356,6 +356,16 @@ export const VIEWS = {
     },
     ready: () => screen.findByText('Guest chat is busy today'),
   },
+  'guest chat refused': {
+    routes: () => guestRoutes({
+      'POST /auth/guest': {
+        status: 429, headers: { 'Retry-After': '3600' },
+        body: { detail: 'Too many guest chats were started from your connection.', code: 'guest_create_limit_reached' },
+      },
+    }),
+    reach: open,
+    ready: () => screen.findByRole('heading', { name: "Guest chat isn't available" }),
+  },
   'guest sign in': {
     routes: () => guestRoutes(),
     reach: async (user) => {
@@ -385,14 +395,17 @@ export const VIEWS = {
   error: {
     routes: () => {
       window.sessionStorage.setItem('loomlane.conversationId', '1')
-      return signedIn({ 'POST /conversations/1/messages': { status: 502, body: { detail: 'The assistant is unavailable right now.' } } })
+      return signedIn({
+        'POST /conversations/1/messages': { status: 502, body: { detail: 'The assistant is unavailable right now.', message_id: 9 } },
+      })
     },
+    // The question "Not sent", with Retry on its bubble
     reach: async (user) => {
       await open(user)
       await user.type(await screen.findByRole('textbox', { name: 'Your question' }), 'And to Lagos?')
       await user.click(screen.getByRole('button', { name: 'Send' }))
     },
-    ready: () => screen.findByRole('button', { name: 'Try again' }),
+    ready: () => screen.findByRole('button', { name: 'Retry' }),
   },
   waking: {
     routes: () => signedIn({ 'GET /health': () => deferred().promise }),

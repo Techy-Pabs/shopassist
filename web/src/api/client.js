@@ -4,7 +4,8 @@
 //   { ok: true, status, data }
 //   { ok: false, kind, status, message, fieldErrors, code, retryAfter }
 // code is the API's reason when it gives one (such as "guest_limit_reached"),
-// and retryAfter the seconds from a Retry-After header, or null.
+// retryAfter the seconds from a Retry-After header, or null, and messageId
+// the question kept as "failed" when a reply failed (502), or null.
 // kind is one of:
 //   "session-ended"  a call made with a token got 401: the session is over
 //   "unauthorized"   a call made without a token got 401 (e.g. wrong password)
@@ -66,7 +67,7 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
     } catch (error) {
       return {
         ok: false, kind: 'network', status: 0, message: NETWORK_MESSAGE, fieldErrors: {}, code: null, retryAfter: null,
-        aborted: error?.name === 'AbortError',
+        messageId: null, aborted: error?.name === 'AbortError',
       }
     }
 
@@ -79,6 +80,7 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
       ok: false, status: response.status, fieldErrors: {},
       code: typeof data?.code === 'string' ? data.code : null,
       retryAfter: Number.isNaN(retryAfter) ? null : retryAfter,
+      messageId: Number.isInteger(data?.message_id) ? data.message_id : null,
     }
 
     if (response.status === 401) {
@@ -124,9 +126,9 @@ export function createApiClient({ baseUrl, getToken, onSessionEnded, fetchImpl =
     listMessages: (conversationId) => request('GET', `/conversations/${conversationId}/messages`),
     sendMessage: (conversationId, content) =>
       request('POST', `/conversations/${conversationId}/messages`, { body: { content } }),
-    // After a failed reply: answer the latest question again without saving
-    // it twice. 409 means there was no unanswered question to retry.
-    retryReply: (conversationId) => request('POST', `/conversations/${conversationId}/retry`),
+    // After a failed reply: answer that same question (it isn't saved again)
+    retryMessage: (conversationId, messageId) =>
+      request('POST', `/conversations/${conversationId}/messages/${messageId}/retry`),
   }
 }
 

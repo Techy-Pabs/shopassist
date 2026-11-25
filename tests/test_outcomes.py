@@ -141,8 +141,8 @@ def test_customers_never_see_outcomes_or_sources(client, chat, knowledge):
     reply = chat("Returns?").json()
     history = client.get(f"/conversations/{chat.conversation_id}/messages", headers=chat.headers).json()
 
-    assert set(reply) == {"id", "role", "content", "created_at"}
-    assert all(set(m) == {"id", "role", "content", "created_at"} for m in history)
+    assert set(reply) == {"id", "role", "content", "status", "retry_in", "created_at"}
+    assert all(set(m) == {"id", "role", "content", "status", "retry_in", "created_at"} for m in history)
 
 
 def test_a_deleted_document_leaves_its_name_on_the_source(client, db, chat, add_document, auth_headers, monkeypatch):

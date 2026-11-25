@@ -20,8 +20,10 @@ function ConversationRow({ conversation, current, last, onOpen }) {
           <span className="min-w-0 truncate text-body font-semibold">{conversation.title ?? 'New conversation'}</span>
           <span className="shrink-0 text-caption font-normal text-ink-muted">{formatDay(new Date(conversation.updated_at))}</span>
         </span>
+        {/* The latest reply, never the customer's own question; or, when the
+            last question's reply failed, that it's waiting */}
         <span className="w-full truncate text-body-small text-ink-muted">
-          {conversation.last_message_preview ?? 'No messages yet'}
+          {conversation.last_message_failed ? 'Waiting for a reply' : (conversation.last_reply_preview ?? 'No messages yet')}
         </span>
       </button>
     </li>

@@ -157,10 +157,13 @@ def fake_ai(monkeypatch):
 def fresh_rate_limits():
     """Rate limit counts live in memory: start each test with none."""
     from app.routers import auth
+    from app.services import guests
 
-    auth.guest_creation_limit.reset()
+    for limit in (auth.guest_creation_limit, guests.guest_retries):
+        limit.reset()
     yield
-    auth.guest_creation_limit.reset()
+    for limit in (auth.guest_creation_limit, guests.guest_retries):
+        limit.reset()
 
 
 @pytest.fixture

@@ -11,6 +11,10 @@ import tailwindcss from 'tailwindcss'
 
 import config from '../tailwind.config.cjs'
 import { showView, viewNames } from './test/views.jsx'
+import { preloadAdmin } from './test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 const SRC = resolve(process.cwd(), 'src')
 

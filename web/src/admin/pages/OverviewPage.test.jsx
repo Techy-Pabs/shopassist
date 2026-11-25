@@ -8,6 +8,10 @@ import { callsTo, deferred, fakeFetch } from '../../test/fakeApi.js'
 import { setMobile } from '../../test/setup.js'
 import { ADMIN_TOKEN_KEY } from '../session.jsx'
 import { comparison, everyDay } from './OverviewPage.jsx'
+import { preloadAdmin } from '../../test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 function open(routes = {}) {
   window.sessionStorage.setItem(ADMIN_TOKEN_KEY, 'admin-token')

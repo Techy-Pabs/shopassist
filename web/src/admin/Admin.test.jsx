@@ -8,6 +8,10 @@ import { callsTo, fakeFetch } from '../test/fakeApi.js'
 import { setMobile } from '../test/setup.js'
 import { PLEX_FONTS_URL } from './look.js'
 import { ADMIN_TOKEN_KEY } from './session.jsx'
+import { preloadAdmin } from '../test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 const ADMIN = { status: 200, body: { id: 1, email: 'abraham@example.com', role: 'admin', created_at: '2026-10-02T09:00:00Z' } }
 const CUSTOMER = { status: 200, body: { id: 2, email: 'chioma@example.com', role: 'customer', created_at: '2026-10-12T09:00:00Z' } }

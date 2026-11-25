@@ -71,7 +71,7 @@ def test_title_is_set_even_when_the_ai_fails(client, auth_headers, fake_ai):
 
 # --- updated_at and last_message_preview ---
 
-def test_preview_is_the_latest_message(client, auth_headers, fake_ai):
+def test_preview_is_the_latest_reply(client, auth_headers, fake_ai):
     headers = auth_headers()
     cid = start(client, headers)
     fake_ai.reply = "Delivery to Abuja takes 3 to 5 business days and costs ₦6,000. Orders over ₦100,000 ship free."
@@ -79,8 +79,9 @@ def test_preview_is_the_latest_message(client, auth_headers, fake_ai):
     say(client, headers, cid, "How long does delivery to Abuja take?")
 
     [item] = listing(client, headers)
-    assert item["last_message_preview"] == "Delivery to Abuja takes 3 to 5 business days and costs ₦6,000. Orders over…"
-    assert len(item["last_message_preview"]) <= 81
+    assert item["last_reply_preview"] == "Delivery to Abuja takes 3 to 5 business days and costs ₦6,000. Orders over…"
+    assert len(item["last_reply_preview"]) <= 81
+    assert item["last_message_failed"] is False
 
 
 def test_a_conversation_without_messages(client, auth_headers):
@@ -89,7 +90,8 @@ def test_a_conversation_without_messages(client, auth_headers):
 
     [item] = listing(client, headers)
 
-    assert item["last_message_preview"] is None
+    assert item["last_reply_preview"] is None
+    assert item["last_message_failed"] is False
     assert item["updated_at"] == item["created_at"]
     assert item["title"] is None
 

@@ -7,6 +7,10 @@ import { join, relative, resolve } from 'node:path'
 import axe from 'axe-core'
 
 import { showView, viewNames } from './test/views.jsx'
+import { preloadAdmin } from './test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 async function violations() {
   const results = await axe.run(document.body, { rules: { 'color-contrast': { enabled: false } } })

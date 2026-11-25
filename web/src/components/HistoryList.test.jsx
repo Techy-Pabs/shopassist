@@ -11,9 +11,9 @@ const DAY = 24 * 60 * 60 * 1000
 const ago = (days) => new Date(Date.now() - days * DAY).toISOString()
 
 const CONVERSATIONS = [
-  { id: 3, title: 'Can I return a sale dress?', last_message_preview: "Sale items can't be refunded, but you can exchange…", updated_at: ago(0), created_at: ago(0) },
-  { id: 2, title: 'Delivery to Abuja', last_message_preview: 'Delivery to Abuja takes 3 to 5 business days and…', updated_at: ago(2), created_at: ago(2) },
-  { id: 1, title: 'Finding my size', last_message_preview: "We use UK sizes. If you're between sizes, size up…", updated_at: ago(10), created_at: ago(10) },
+  { id: 3, title: 'Can I return a sale dress?', last_reply_preview: "Sale items can't be refunded, but you can exchange…", last_message_failed: false, updated_at: ago(0), created_at: ago(0) },
+  { id: 2, title: 'Delivery to Abuja', last_reply_preview: 'Delivery to Abuja takes 3 to 5 business days and…', last_message_failed: false, updated_at: ago(2), created_at: ago(2) },
+  { id: 1, title: 'Finding my size', last_reply_preview: "We use UK sizes. If you're between sizes, size up…", last_message_failed: false, updated_at: ago(10), created_at: ago(10) },
 ]
 const MESSAGES_2 = [
   { id: 20, role: 'user', content: 'Delivery to Abuja?', created_at: ago(2) },
@@ -95,7 +95,7 @@ describe('opening the history', () => {
 
   it('names untitled and empty conversations', async () => {
     const { user } = setup({
-      'GET /conversations': { status: 200, body: [{ id: 9, title: null, last_message_preview: null, updated_at: ago(0), created_at: ago(0) }] },
+      'GET /conversations': { status: 200, body: [{ id: 9, title: null, last_reply_preview: null, last_message_failed: false, updated_at: ago(0), created_at: ago(0) }] },
     })
     await openHistory(user)
 
@@ -228,5 +228,22 @@ describe('moving between conversations', () => {
     await user.click(launcherButton())
 
     expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the preview', () => {
+  it('is the latest reply, or "Waiting for a reply" when the last question failed', async () => {
+    const { user } = setup({
+      'GET /conversations': { status: 200, body: [
+        { id: 4, title: 'Pickup in Abuja?', last_reply_preview: 'Yes, pickup is free.', last_message_failed: true, updated_at: ago(0), created_at: ago(0) },
+        { id: 3, title: 'Can I return a sale dress?', last_reply_preview: 'Sale items can be exchanged.', last_message_failed: false, updated_at: ago(0), created_at: ago(0) },
+      ] },
+    })
+    await openHistory(user)
+
+    const items = await screen.findAllByRole('button', { name: /Pickup in Abuja|sale dress/ })
+    expect(items[0]).toHaveTextContent('Waiting for a reply')
+    expect(items[0]).not.toHaveTextContent('Yes, pickup is free.')
+    expect(items[1]).toHaveTextContent('Sale items can be exchanged.')
   })
 })

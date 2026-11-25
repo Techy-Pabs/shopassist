@@ -7,6 +7,10 @@ import { ADMIN_ME, STATS, USERS, adminUser, usersBody } from '../../test/adminFi
 import { callsTo, deferred, fakeFetch } from '../../test/fakeApi.js'
 import { setMobile } from '../../test/setup.js'
 import { ADMIN_TOKEN_KEY } from '../session.jsx'
+import { preloadAdmin } from '../../test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 let location
 function Where() {
