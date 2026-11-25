@@ -9,6 +9,10 @@ import {
 import { callsTo, deferred, fakeFetch } from '../../test/fakeApi.js'
 import { setMobile } from '../../test/setup.js'
 import { ADMIN_TOKEN_KEY } from '../session.jsx'
+import { preloadAdmin } from '../../test/preloadAdmin.js'
+
+// Load the lazily loaded dashboard before any test's timing starts
+beforeAll(preloadAdmin)
 
 // Where the app is, and a way to press Back
 let location

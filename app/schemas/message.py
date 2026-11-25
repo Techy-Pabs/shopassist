@@ -15,4 +15,11 @@ class MessageResponse(BaseModel):
     id: int
     role: str
     content: str
+    # "sent", or "failed": a question whose reply failed (retry it with
+    # POST /conversations/{id}/messages/{message_id}/retry)
+    status: str
+    # A question still being answered ("sending"): the seconds until it
+    # counts as failed and can be retried. The server's cut-off, so the chat
+    # doesn't keep a number of its own. None otherwise.
+    retry_in: int | None = None
     created_at: datetime

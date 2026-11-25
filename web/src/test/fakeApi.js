@@ -1,7 +1,6 @@
 import { vi } from 'vitest'
 
-// Guest chat turned off: what POST /auth/guest answers unless a test says
-// otherwise, so opening the chat signed out shows sign in, as before guests
+// Guest chat turned off: what POST /auth/guest answers when a test asks for it
 export const GUEST_CHAT_OFF = {
   status: 403, body: { detail: 'Guest chat is turned off. Sign in or create an account to chat.', code: 'guest_chat_disabled' },
 }
@@ -10,11 +9,13 @@ export const GUEST_CHAT_OFF = {
 // { status, body, headers }, or a function (init, url) => reply. Throwing
 // simulates a network failure. Every call is recorded in fetch.mock.calls.
 export function fakeFetch(routes) {
-  // The API is awake, and guest chat is off, unless a test says otherwise
+  // Unless a test says otherwise: the API is awake, guest chat isn't
+  // offered, and a guest chat can't be started (the request gets no answer),
+  // so opening the chat signed out shows sign in, as before guests
   const all = {
     'GET /health': { status: 200, body: { status: 'ok', service: 'shopassist' } },
     'GET /auth/guest': { status: 200, body: { enabled: false } },
-    'POST /auth/guest': GUEST_CHAT_OFF,
+    'POST /auth/guest': () => new TypeError('Failed to fetch'),
     ...routes,
   }
   return vi.fn(async (url, init = {}) => {

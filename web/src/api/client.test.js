@@ -28,6 +28,25 @@ describe('API client', () => {
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ email: 'a@example.com', password: 'password1' })
   })
 
+  it('reads the wait from the Retry-After header (not the JSON body), with the reason and its code', async () => {
+    const { api } = client({
+      'POST /auth/guest': {
+        status: 429, headers: { 'Retry-After': '3540' },
+        body: { detail: 'Too many guest chats were started from your connection.', code: 'guest_create_limit_reached', retry_after: 5 },
+      },
+    })
+
+    const result = await api.createGuest()
+
+    expect(result).toMatchObject({ ok: false, kind: 'rate-limited', status: 429, code: 'guest_create_limit_reached', retryAfter: 3540 })
+  })
+
+  it('no Retry-After header means no known wait', async () => {
+    const { api } = client({ 'POST /auth/guest': { status: 429, body: { detail: 'Slow down.', code: 'guest_create_limit_reached' } } })
+
+    expect((await api.createGuest()).retryAfter).toBeNull()
+  })
+
   it('a 401 on a call made with a token ends the session', async () => {
     const { api, onSessionEnded } = client({ 'GET /auth/me': { status: 401, body: { detail: 'Could not validate credentials' } } }, 'tok')
 

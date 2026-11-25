@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import App from '../App.jsx'
 import { callsTo, deferred, fakeFetch } from '../test/fakeApi.js'
+import { POLL_EVERY } from './ChatView.jsx'
 import { DEMO_NOTE, GREETING, SUGGESTIONS } from './WelcomeScreen.jsx'
 import { launcherButton } from '../test/launcher.js'
 
@@ -179,76 +180,184 @@ describe('sending a message', () => {
 })
 
 describe('when something goes wrong', () => {
-  it('a 502 shows the unavailable card, and Try again asks for the reply without saving the question twice', async () => {
+  const FAILED_502 = (messageId) => ({
+    status: 502, body: { detail: 'The assistant is unavailable right now. Please try again in a moment.', message_id: messageId },
+  })
+  const bubbles = (text) => screen.getAllByText(text, { selector: 'p' })
+  const notSent = () => screen.queryByText('Not sent')
+  const retryButton = () => screen.queryByRole('button', { name: 'Retry' })
+
+  it('a failed reply marks the question "Not sent", with Retry on the bubble itself', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': FAILED_502(7) })
+    await openChat(user)
+
+    await ask(user, 'Delivery in Lagos?')
+
+    expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    const bubble = bubbles('Delivery in Lagos?')[0]
+    // "Not sent" and Retry belong to the question's bubble
+    expect(bubble.parentElement).toContainElement(notSent())
+    expect(bubble.parentElement).toContainElement(retryButton())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument() // no separate card
+  })
+
+  it('Retry answers that same message, without a second bubble or saving it twice', async () => {
     const { user, fetch } = setup({
-      'POST /conversations/42/messages': { status: 502, body: { detail: 'The assistant is unavailable right now. Please try again in a moment.' } },
-      'POST /conversations/42/retry': reply('Delivery in Lagos takes 1 to 2 business days.'),
+      'POST /conversations/42/messages': FAILED_502(7),
+      'POST /conversations/42/messages/7/retry': reply('Delivery in Lagos takes 1 to 2 business days.'),
     })
     await openChat(user)
     await ask(user, 'Delivery in Lagos?')
 
-    const card = await screen.findByRole('alert')
-    expect(card).toHaveTextContent('The assistant is unavailable right now')
-    expect(card).toHaveTextContent('Your question is saved.')
-    expect(within(card).getByText('WhatsApp +234 800 000 0000')).toBeInTheDocument()
-    expect(within(card).queryByRole('link')).not.toBeInTheDocument() // a placeholder number: not a link
-
-    await user.click(within(card).getByRole('button', { name: 'Try again' }))
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
 
     expect(await screen.findByText('Delivery in Lagos takes 1 to 2 business days.')).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1) // the question was sent once
-    expect(callsTo(fetch, 'POST', '/conversations/42/retry')).toHaveLength(1)
-    expect(screen.getAllByText('Delivery in Lagos?')).toHaveLength(1) // no second bubble
+    expect(bubbles('Delivery in Lagos?')).toHaveLength(1) // no second bubble
+    expect(notSent()).not.toBeInTheDocument()
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1) // sent once
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(1)
+    expect(input()).toHaveFocus() // the Retry button went with the failed state
   })
 
-  it('Try again sends the question in full if it never reached the server (409)', async () => {
-    let sends = 0
+  it('a retry that fails again keeps one bubble, "Not sent", and Retry', async () => {
     const { user, fetch } = setup({
-      'POST /conversations/42/messages': () => (++sends === 1 ? new TypeError('Failed to fetch') : reply('Hello there.')),
-      'POST /conversations/42/retry': { status: 409, body: { detail: 'There is no unanswered question to retry.' } },
+      'POST /conversations/42/messages': FAILED_502(7),
+      'POST /conversations/42/messages/7/retry': FAILED_502(7),
     })
     await openChat(user)
     await ask(user, 'Hello?')
-    const card = await screen.findByRole('alert')
 
-    await user.click(within(card).getByRole('button', { name: 'Try again' }))
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(1))
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+
+    await waitFor(() => expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(2))
+    expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    expect(bubbles('Hello?')).toHaveLength(1)
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1)
+  })
+
+  // A send that got no answer at all: on Retry, the chat looks at the
+  // conversation on the server before sending the question again
+  const NO_ANSWER = () => new TypeError('Failed to fetch')
+  const asked = (id, content, status, extra = {}) => ({ id, role: 'user', content, status, created_at: now(), ...extra })
+  const answered = (id, content) => ({ id, role: 'assistant', content, status: 'sent', created_at: now() })
+
+  it('the server answered even though the send got no response: Retry shows its reply, without sending again', async () => {
+    const { user, fetch } = setup({
+      'POST /conversations/42/messages': NO_ANSWER,
+      'GET /conversations/42/messages': { status: 200, body: [asked(7, 'Hello?', 'sent'), answered(8, 'Hello there.')] },
+    })
+    await openChat(user)
+    await ask(user, 'Hello?')
+
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
 
     expect(await screen.findByText('Hello there.')).toBeInTheDocument()
-    expect(callsTo(fetch, 'POST', '/conversations/42/retry')).toHaveLength(1)
-    expect(callsTo(fetch, 'POST', '/conversations/42/messages').map(sentContent)).toEqual(['Hello?', 'Hello?'])
-    expect(screen.getAllByText('Hello?')).toHaveLength(1)
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1) // not sent again
+    expect(fetch.mock.calls.filter(([url]) => url.includes('/retry'))).toHaveLength(0) // and no AI asked
+    expect(bubbles('Hello?')).toHaveLength(1)
+    expect(notSent()).not.toBeInTheDocument()
   })
 
-  it('a retry that fails again shows the card again', async () => {
-    const { user } = setup({
-      'POST /conversations/42/messages': { status: 502, body: {} },
-      'POST /conversations/42/retry': { status: 502, body: {} },
+  it("the send never arrived: Retry sends it, once", async () => {
+    let sends = 0
+    const { user, fetch } = setup({
+      'POST /conversations/42/messages': () => (++sends === 1 ? NO_ANSWER() : reply('Hello there.')),
+      'GET /conversations/42/messages': { status: 200, body: [] },
     })
     await openChat(user)
     await ask(user, 'Hello?')
-    await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('The assistant is unavailable right now')
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+    expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(1) // looked first
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages').map(sentContent)).toEqual(['Hello?', 'Hello?'])
+    expect(bubbles('Hello?')).toHaveLength(1)
   })
 
-  it('no response at all also shows the unavailable card', async () => {
-    const { user } = setup({ 'POST /conversations/42/messages': () => new TypeError('Failed to fetch') })
+  it('the send arrived but its reply failed: Retry answers that same message by its id', async () => {
+    const { user, fetch } = setup({
+      'POST /conversations/42/messages': NO_ANSWER,
+      'GET /conversations/42/messages': { status: 200, body: [asked(7, 'Hello?', 'failed')] },
+      'POST /conversations/42/messages/7/retry': reply('Hello there.'),
+    })
+    await openChat(user)
+    await ask(user, 'Hello?')
+
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1)
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(1)
+    expect(bubbles('Hello?')).toHaveLength(1)
+  })
+
+  it('a question the chat already knew with the same words is not mistaken for this one', async () => {
+    window.sessionStorage.setItem(CONVERSATION_KEY, '42')
+    let sends = 0
+    // The server has only the earlier "Hello?": the new one never arrived
+    const earlier = [asked(5, 'Hello?', 'sent'), answered(6, 'Hi! How can I help?')]
+    const { user, fetch } = setup({
+      'GET /conversations/42/messages': { status: 200, body: earlier },
+      'POST /conversations/42/messages': () => (++sends === 1 ? NO_ANSWER() : reply('Hello again.')),
+    })
+    await openChat(user)
+    await screen.findByText('Hi! How can I help?')
+    await ask(user, 'Hello?')
+
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Hello again.')).toBeInTheDocument()
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(2) // the earlier "Hello?" wasn't this one
+  })
+  it('says so to screen readers', async () => {
+    const { user } = setup({ 'POST /conversations/42/messages': FAILED_502(7) })
     await openChat(user)
 
     await ask(user, 'Hello?')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('The assistant is unavailable right now')
+    await waitFor(() => expect(screen.getByText(/^Not sent: /, { selector: '[role="status"]' })).toHaveTextContent(
+      'Not sent: The assistant is unavailable right now. Please try again in a moment. Use Retry to try again.',
+    ))
   })
 
-  it('shows the placeholder WhatsApp number as text, not a link', async () => {
-    const { user } = setup({ 'POST /conversations/42/messages': { status: 502, body: {} } })
+  it('reopening a conversation whose last question failed shows it "Not sent", and Retry answers it', async () => {
+    window.sessionStorage.setItem(CONVERSATION_KEY, '42')
+    const { user, fetch } = setup({
+      'GET /conversations/42/messages': { status: 200, body: [
+        { id: 5, role: 'user', content: 'Is pickup free?', status: 'sent', created_at: now() },
+        { id: 6, role: 'assistant', content: 'Yes, pickup is free.', status: 'sent', created_at: now() },
+        { id: 7, role: 'user', content: 'And in Abuja?', status: 'failed', created_at: now() },
+      ] },
+      'POST /conversations/42/messages/7/retry': reply('We have no pickup point in Abuja.'),
+    })
     await openChat(user)
-    await ask(user, 'Do you deliver to Port Harcourt?')
 
-    const card = await screen.findByRole('alert')
-    expect(within(card).getByText('WhatsApp +234 800 000 0000')).toBeInTheDocument()
-    expect(within(card).queryByRole('link')).not.toBeInTheDocument()
+    expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    expect(bubbles('And in Abuja?')[0].parentElement).toContainElement(retryButton())
+
+    await user.click(retryButton())
+
+    expect(await screen.findByText('We have no pickup point in Abuja.')).toBeInTheDocument()
+    expect(bubbles('And in Abuja?')).toHaveLength(1)
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(0)
+  })
+
+  it('an older question that failed stays "Not sent", without Retry (only the latest can be retried)', async () => {
+    window.sessionStorage.setItem(CONVERSATION_KEY, '42')
+    const { user } = setup({
+      'GET /conversations/42/messages': { status: 200, body: [
+        { id: 5, role: 'user', content: 'Is pickup free?', status: 'failed', created_at: now() },
+        { id: 6, role: 'user', content: 'Hello?', status: 'sent', created_at: now() },
+        { id: 7, role: 'assistant', content: 'Hi! How can I help?', status: 'sent', created_at: now() },
+      ] },
+    })
+    await openChat(user)
+
+    expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    expect(retryButton()).not.toBeInTheDocument()
   })
 
   it('a 422 shows the message under the input and gives the text back', async () => {
@@ -311,11 +420,14 @@ describe('a 401 on any call returns to sign in', () => {
     await expectSignIn()
   })
 
-  it('Try again', async () => {
-    const { user } = setup({ 'POST /conversations/42/messages': FAILED, 'POST /conversations/42/retry': ENDED })
+  it('Retry', async () => {
+    const { user } = setup({
+      'POST /conversations/42/messages': { ...FAILED, body: { ...FAILED.body, message_id: 7 } },
+      'POST /conversations/42/messages/7/retry': ENDED,
+    })
     await openChat(user)
     await ask(user, 'Hello?')
-    await user.click(await screen.findByRole('button', { name: 'Try again' }))
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
     await expectSignIn()
   })
 })
@@ -368,6 +480,9 @@ describe('waking the API', () => {
     const card = screen.getByRole('alert')
     expect(card).toHaveTextContent('The assistant is unavailable right now')
     expect(card).not.toHaveTextContent('Your question is saved') // nothing was asked yet
+    // A placeholder number: shown as text, not a link
+    expect(within(card).getByText('WhatsApp +234 800 000 0000')).toBeInTheDocument()
+    expect(within(card).queryByRole('link')).not.toBeInTheDocument()
     await user.click(within(card).getByRole('button', { name: 'Try again' }))
     expect(callsTo(fetch, 'GET', '/health')).toHaveLength(2)
   })
@@ -495,7 +610,7 @@ describe('the header follows the chat', () => {
 
     await ask(user, 'Do you deliver to Port Harcourt?')
 
-    await screen.findByRole('alert')
+    await screen.findByText('Not sent')
     expect(subtitle()).toHaveTextContent(/^AI assistant$/)
   })
 
@@ -512,5 +627,208 @@ describe('the header follows the chat', () => {
     await act(async () => pending.resolve({ status: 200, body: { status: 'ok' } }))
     expect(subtitle()).toHaveTextContent('AI assistant, replies in seconds')
     expect(screen.getByRole('button', { name: 'Conversation history' })).toBeInTheDocument()
+  })
+})
+
+describe('"Still answering…" while another request writes the reply', () => {
+  afterEach(() => vi.useRealTimers())
+  const FAILED_502 = { status: 502, body: { detail: 'The assistant is unavailable right now. Please try again in a moment.', message_id: 7 } }
+  const IN_PROGRESS = { status: 409, body: { detail: 'This question is already being answered.', code: 'reply_in_progress' } }
+  const question = (status) => ({ id: 7, role: 'user', content: 'Hello?', status, created_at: now() })
+  const replyRow = { id: 8, role: 'assistant', content: 'Hello there.', status: 'sent', created_at: now() }
+
+  // A failed question, then a retry that another request is already answering
+  async function startAnswering(server) {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const result = setup({
+      'POST /conversations/42/messages': FAILED_502,
+      'POST /conversations/42/messages/7/retry': IN_PROGRESS,
+      'GET /conversations/42/messages': () => server.reply,
+    }, { userOptions: { advanceTimers: vi.advanceTimersByTime } })
+    await openChat(result.user)
+    await ask(result.user, 'Hello?')
+    await result.user.click(await screen.findByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('Still answering…')).toBeInTheDocument()
+    return result
+  }
+  const look = () => act(async () => vi.advanceTimersByTime(POLL_EVERY))
+
+  it('shows "Still answering…", with no error and no Retry, until the reply appears', async () => {
+    const server = { reply: { status: 200, body: [question('sending')] } }
+    const { fetch } = await startAnswering(server)
+
+    expect(screen.queryByText('Not sent')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Still answering. The reply will appear here.')).toBeInTheDocument() // announced
+
+    await look()
+    expect(screen.getByText('Still answering…')).toBeInTheDocument() // still sending: looks again
+    server.reply = { status: 200, body: [question('sent'), replyRow] }
+    await look()
+
+    expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+    expect(screen.queryByText('Still answering…')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Hello?', { selector: 'p' })).toHaveLength(1)
+    expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(2)
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(1) // never asked the AI itself
+  })
+
+  it('if the other request dies, "Not sent" with Retry once the server counts it as failed', async () => {
+    const server = { reply: { status: 200, body: [question('sending')] } }
+    await startAnswering(server)
+
+    server.reply = { status: 200, body: [question('failed')] } // stuck past the cut-off: the server says failed
+    await look()
+
+    expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.queryByText('Still answering…')).not.toBeInTheDocument()
+  })
+
+  describe('offline, and the cut-off', () => {
+    let online = true
+    beforeEach(() => {
+      online = true
+      Object.defineProperty(window.navigator, 'onLine', { configurable: true, get: () => online })
+    })
+    afterEach(() => {
+      delete window.navigator.onLine // back to jsdom's own
+    })
+    const goOffline = () => act(async () => {
+      online = false
+      window.dispatchEvent(new Event('offline'))
+    })
+    const goOnline = () => act(async () => {
+      online = true
+      window.dispatchEvent(new Event('online'))
+    })
+    // The 409 says how long until the server counts the question as failed
+    const inProgressFor = (seconds) => ({ ...IN_PROGRESS, headers: { 'Retry-After': String(seconds) } })
+
+    async function start(server, retryAfter = 120) {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const result = setup({
+        'POST /conversations/42/messages': FAILED_502,
+        'POST /conversations/42/messages/7/retry': () => server.retry ?? inProgressFor(retryAfter),
+        'GET /conversations/42/messages': () => server.reply,
+      }, { userOptions: { advanceTimers: vi.advanceTimersByTime } })
+      await openChat(result.user)
+      await ask(result.user, 'Hello?')
+      await result.user.click(await screen.findByRole('button', { name: 'Retry' }))
+      expect(await screen.findByText('Still answering…')).toBeInTheDocument()
+      return result
+    }
+
+    it('pauses while the browser is offline, and looks again as soon as it is back', async () => {
+      const server = { reply: { status: 200, body: [question('sending')] } }
+      const { fetch } = await start(server)
+      await goOffline()
+
+      await look()
+      await look()
+      expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(0) // paused
+      expect(screen.getByText('Still answering…')).toBeInTheDocument()
+
+      server.reply = { status: 200, body: [question('sent'), replyRow] }
+      await goOnline() // looks straight away, without waiting for the next tick
+
+      expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+      expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(1)
+    })
+
+    it('already offline when the waiting starts: no looking until the browser is back', async () => {
+      const server = { reply: { status: 200, body: [question('sending')] } }
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const { fetch, user } = setup({
+        'POST /conversations/42/messages': FAILED_502,
+        'POST /conversations/42/messages/7/retry': inProgressFor(120),
+        'GET /conversations/42/messages': () => server.reply,
+      }, { userOptions: { advanceTimers: vi.advanceTimersByTime } })
+      await openChat(user)
+      await ask(user, 'Hello?')
+      online = false // the retry's answer arrives as the connection drops
+      await user.click(await screen.findByRole('button', { name: 'Retry' }))
+      expect(await screen.findByText('Still answering…')).toBeInTheDocument()
+
+      await look()
+      await look()
+      expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(0)
+
+      server.reply = { status: 200, body: [question('sent'), replyRow] }
+      await goOnline()
+      expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+    })
+
+    it("stops at the server's cut-off and shows the failed state, with Retry for that same message", async () => {
+      const server = { reply: { status: 200, body: [question('sending')] } }
+      const { fetch, user } = await start(server, 10)
+
+      await act(async () => vi.advanceTimersByTime(9_000))
+      expect(screen.getByText('Still answering…')).toBeInTheDocument()
+      await act(async () => vi.advanceTimersByTime(1_000))
+
+      expect(await screen.findByText('Not sent')).toBeInTheDocument()
+      expect(screen.queryByText('Still answering…')).not.toBeInTheDocument()
+      const looks = callsTo(fetch, 'GET', '/conversations/42/messages').length
+      await look()
+      expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(looks) // stopped looking
+
+      server.retry = { status: 201, body: replyRow }
+      await user.click(screen.getByRole('button', { name: 'Retry' }))
+      expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+      expect(callsTo(fetch, 'POST', '/conversations/42/messages/7/retry')).toHaveLength(2)
+    })
+
+    it('reaches the cut-off even while offline', async () => {
+      const server = { reply: { status: 200, body: [question('sending')] } }
+      await start(server, 10)
+      await goOffline()
+
+      await act(async () => vi.advanceTimersByTime(10_000))
+
+      expect(await screen.findByText('Not sent')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    })
+
+    it('takes the time left from each look, so the cut-off follows the server', async () => {
+      const server = { reply: { status: 200, body: [{ ...question('sending'), retry_in: 4 }] } }
+      await start(server, 120)
+
+      await look() // the server now says 4 seconds are left
+      await act(async () => vi.advanceTimersByTime(4_000))
+
+      expect(await screen.findByText('Not sent')).toBeInTheDocument()
+    })
+  })
+
+  it('stops looking when the chat is closed', async () => {
+    const server = { reply: { status: 200, body: [question('sending')] } }
+    const { fetch, user } = await startAnswering(server)
+
+    await user.click(screen.getByRole('button', { name: 'Close chat' }))
+    await look()
+    await look()
+
+    expect(callsTo(fetch, 'GET', '/conversations/42/messages')).toHaveLength(0)
+  })
+
+  it('a send that got no answer, found still being answered on the server, waits the same way', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const server = { reply: { status: 200, body: [question('sending')] } }
+    const { user, fetch } = setup({
+      'POST /conversations/42/messages': () => new TypeError('Failed to fetch'),
+      'GET /conversations/42/messages': () => server.reply,
+    }, { userOptions: { advanceTimers: vi.advanceTimersByTime } })
+    await openChat(user)
+    await ask(user, 'Hello?')
+
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('Still answering…')).toBeInTheDocument()
+    server.reply = { status: 200, body: [question('sent'), replyRow] }
+    await look()
+
+    expect(await screen.findByText('Hello there.')).toBeInTheDocument()
+    expect(callsTo(fetch, 'POST', '/conversations/42/messages')).toHaveLength(1)
   })
 })

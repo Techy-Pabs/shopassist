@@ -71,3 +71,20 @@ def test_several_origins_are_split_and_trailing_slashes_removed():
                         allowed_origins="https://shop.example/, http://localhost:5173")
 
     assert settings.allowed_origins_list == ["https://shop.example", "http://localhost:5173"]
+
+
+def test_the_browser_may_read_retry_after_on_a_429(client):
+    # The chat reads how long to wait from the Retry-After header. Across
+    # origins the browser only lets the page read the headers listed in
+    # Access-Control-Expose-Headers, so Retry-After must be there
+    for _ in range(5):
+        client.post("/auth/guest", headers={"Origin": ALLOWED})
+
+    response = client.post("/auth/guest", headers={"Origin": ALLOWED})
+
+    assert response.status_code == 429
+    assert int(response.headers["retry-after"]) > 0
+    assert response.headers["access-control-allow-origin"] == ALLOWED
+    assert "retry-after" in response.headers["access-control-expose-headers"].lower()
+    # The wait is only in the header: the body has the reason and its code
+    assert set(response.json()) == {"detail", "code"}
